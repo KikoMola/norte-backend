@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: norte-bff
+  threads:
+    virtual:
+      enabled: true
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/norte}
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: ${BFF_CLIENT_ID:norte-bff}
+            # Secreto de desarrollo del realm local. En producción, siempre por variable de entorno.
+            client-secret: ${BFF_CLIENT_SECRET:norte-bff-dev-secret}
+            authorization-grant-type: authorization_code
+            scope: openid,profile,email
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+
+server:
+  port: ${PORT:8080}
+  # Detrás de Caddy/Traefik en producción: respeta X-Forwarded-* para construir las URL de redirección.
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: ${SESSION_COOKIE_NAME:NORTE_SESSION}
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:false}
+
+norte:
+  bff:
+    api-uri: ${API_URI:http://localhost:8081}
+    post-login-redirect: ${POST_LOGIN_REDIRECT:/}
+    post-logout-redirect: ${POST_LOGOUT_REDIRECT:{baseUrl}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

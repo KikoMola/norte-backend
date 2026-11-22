@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: norte-app
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    # La aplicación conecta con un usuario que no es dueño de las tablas y no tiene BYPASSRLS (paso 0.14).
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/norte}
+    username: ${DB_APP_USER:norte_app}
+    password: ${DB_APP_PASSWORD:norte_app}
+  flyway:
+    # Flyway migra con el usuario dueño de las tablas.
+    user: ${DB_OWNER_USER:norte_owner}
+    password: ${DB_OWNER_PASSWORD:norte_owner}
+  jpa:
+    open-in-view: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/norte}
+          audiences: norte-api
+
+server:
+  port: ${PORT:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,modulith
