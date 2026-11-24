@@ -1,5 +1,6 @@
 plugins {
 	java
+	jacoco
 	id("org.springframework.boot")
 	id("io.spring.dependency-management")
 }
@@ -18,6 +19,7 @@ extra["springCloudVersion"] = "2026.0.0"
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-client")
 	implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webmvc")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
@@ -34,4 +36,13 @@ dependencyManagement {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+	dependsOn(tasks.test)
+	reports {
+		xml.required = true
+		html.required = true
+	}
 }

@@ -39,8 +39,34 @@ norte:
     post-login-redirect: ${POST_LOGIN_REDIRECT:/}
     post-logout-redirect: ${POST_LOGOUT_REDIRECT:{baseUrl}}
 
+logging:
+  structured:
+    # Logs JSON (ECS) con traceId y spanId (paso 0.18). LOG_FORMAT admite ecs, logstash o gelf.
+    format:
+      console: ${LOG_FORMAT:ecs}
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    resource-attributes:
+      service.namespace: norte
+      deployment.environment.name: ${DEPLOYMENT_ENVIRONMENT:local}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+  otlp:
+    metrics:
+      export:
+        url: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/metrics
+        step: 30s
+  logging:
+    export:
+      otlp:
+        enabled: false
