@@ -9,6 +9,9 @@ info:
 
     El navegador no llama a esta API directamente: pasa por el BFF, que añade el access token. Por eso el esquema de
     seguridad es `bearerAuth` aunque la SPA solo use una cookie de sesión.
+  license:
+    name: Apache 2.0
+    identifier: Apache-2.0
 servers:
   - url: /api/v1
     description: A través del BFF (mismo origen que la SPA)

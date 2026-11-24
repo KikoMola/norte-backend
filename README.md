@@ -112,3 +112,8 @@ Primer despliegue:
 ## Contribuir
 
 Ver [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Licencia
+
+[Apache 2.0](LICENSE): puedes usar, copiar, modificar, redistribuir y vender este código, también en productos
+cerrados, siempre que conserves el aviso de copyright y la licencia.

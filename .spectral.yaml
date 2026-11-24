@@ -3,7 +3,6 @@ extends:
 
 # Reglas propias de la guía de estilo (api/README.md).
 rules:
-  info-license: off # Pendiente de elegir licencia.
   info-contact: off
   operation-description: off # Basta con summary; la descripción larga es opcional.
   oas3-unused-component: off # Los componentes comunes (Money, Address, AuditEvent…) se definen antes de usarse (paso 0.21).
