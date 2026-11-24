@@ -1,0 +1,83 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    "docker:pinDigests",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "baseBranches": ["master"],
+  "timezone": "Europe/Madrid",
+  "schedule": ["before 7am on monday"],
+  "labels": ["dependencias"],
+  "prConcurrentLimit": 5,
+  "minimumReleaseAge": "3 days",
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "minimumReleaseAge": null,
+    "labels": ["seguridad"]
+  },
+  "packageRules": [
+    {
+      "description": "Spring Boot y sus BOM avanzan juntos.",
+      "matchPackageNames": [
+        "org.springframework.boot{/,}**",
+        "io.spring.dependency-management{/,}**",
+        "org.springframework.modulith{/,}**",
+        "org.springframework.cloud{/,}**"
+      ],
+      "groupName": "spring"
+    },
+    {
+      "description": "Testcontainers en un único PR.",
+      "matchPackageNames": ["org.testcontainers{/,}**"],
+      "groupName": "testcontainers"
+    },
+    {
+      "description": "Todas las GitHub Actions en un único PR.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "description": "Imágenes de herramientas de CI (Trivy, Gitleaks, oasdiff).",
+      "matchManagers": ["custom.regex"],
+      "matchDatasources": ["docker"],
+      "groupName": "herramientas de CI"
+    },
+    {
+      "description": "Las versiones mayores se revisan a mano.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Imágenes fijadas en variables de entorno de los workflows.",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "_IMAGE: (?<depName>[a-z0-9./-]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Imágenes base del Dockerfile (ARG con digest).",
+      "managerFilePatterns": ["/^infra/docker/Dockerfile$/"],
+      "matchStrings": [
+        "ARG [A-Z_]+_IMAGE=(?<depName>[a-z0-9./-]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Versión de Spectral en justfile y workflows.",
+      "managerFilePatterns": ["/^justfile$/", "/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": ["@stoplight/spectral-cli@(?<currentValue>[0-9][^'\"\\s]*)"],
+      "depNameTemplate": "@stoplight/spectral-cli",
+      "datasourceTemplate": "npm"
+    }
+  ]
+}
