@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-#
 # Imagen de un subproyecto Spring Boot (app o bff). Se construye desde la raíz del repo:
 #
 #   docker build -f infra/docker/Dockerfile --build-arg MODULE=app -t norte-app .
