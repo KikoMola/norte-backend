@@ -13,7 +13,7 @@ WORKDIR /workspace
 COPY . .
 RUN --mount=type=cache,target=/root/.gradle \
     test -n "${MODULE}" \
- && ./gradlew --no-daemon --console=plain ":${MODULE}:bootJar" -x test \
+ && sh ./gradlew --no-daemon --console=plain ":${MODULE}:bootJar" -x test \
  && jar="$(find "${MODULE}/build/libs" -name '*.jar' ! -name '*-plain.jar' | head -n 1)" \
  && java -Djarmode=tools -jar "${jar}" extract --layers --launcher --destination /extracted
 
