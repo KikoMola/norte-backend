@@ -11,9 +11,10 @@ on:
   pull_request:
     branches: [master]
 
+# En PR se cancela la ejecución anterior; en master la que está en marcha termina y solo espera la más reciente.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions: {}
 
@@ -131,7 +132,7 @@ jobs:
           fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 .
 
   images:
-    name: Imágenes (${{ matrix.module }})
+    name: Imagen ${{ matrix.module }}
     needs: [build, contract, security]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
@@ -140,12 +141,21 @@ jobs:
       contents: read
       packages: write
     strategy:
+      fail-fast: false
       matrix:
         include:
           - module: app
+            context: .
+            file: infra/docker/Dockerfile
             port: '8081'
           - module: bff
+            context: .
+            file: infra/docker/Dockerfile
             port: '8080'
+          - module: backup
+            context: infra/docker/backup
+            file: infra/docker/backup/Dockerfile
+            port: ''
     env:
       IMAGE: ghcr.io/kikomola/norte-${{ matrix.module }}
     steps:
@@ -172,8 +182,8 @@ jobs:
       - name: Build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: .
-          file: infra/docker/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           build-args: |
             MODULE=${{ matrix.module }}
             PORT=${{ matrix.port }}
