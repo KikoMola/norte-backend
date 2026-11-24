@@ -1,0 +1,10 @@
+# Contexto mínimo para construir app y bff (se aplica solo a infra/docker/Dockerfile).
+.git
+.gradle
+.idea
+.vscode
+**/build
+**/node_modules
+infra/deploy
+**/*.env
+.env
