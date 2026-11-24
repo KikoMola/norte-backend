@@ -10,11 +10,13 @@ spring:
     username: ${DB_APP_USER:norte_app}
     password: ${DB_APP_PASSWORD:norte_app}
   flyway:
-    # Flyway migra con el usuario dueño de las tablas.
+    # Flyway migra con el usuario dueño de los esquemas y las tablas.
     user: ${DB_OWNER_USER:norte_owner}
     password: ${DB_OWNER_PASSWORD:norte_owner}
   jpa:
     open-in-view: false
+  jackson:
+    default-property-inclusion: non_null
   security:
     oauth2:
       resourceserver:
@@ -25,8 +27,36 @@ spring:
 server:
   port: ${PORT:8081}
 
+logging:
+  structured:
+    # Logs JSON (ECS) con traceId, spanId y tenantId del MDC (paso 0.18). LOG_FORMAT admite ecs, logstash o gelf.
+    format:
+      console: ${LOG_FORMAT:ecs}
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info,modulith
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    resource-attributes:
+      service.namespace: norte
+      deployment.environment.name: ${DEPLOYMENT_ENVIRONMENT:local}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+  otlp:
+    metrics:
+      export:
+        url: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/metrics
+        step: 30s
+  logging:
+    export:
+      otlp:
+        # Los logs van a la consola en JSON; su envío a Loki por OTLP necesita el appender de logback de
+        # OpenTelemetry, que aún es alfa. Ver docs/configuracion.md.
+        enabled: false
