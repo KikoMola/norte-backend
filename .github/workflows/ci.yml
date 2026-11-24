@@ -73,7 +73,7 @@ jobs:
 
       - name: SonarCloud omitido
         if: env.SONAR_TOKEN == ''
-        run: echo "::notice::SonarCloud omitido: falta el secret SONAR_TOKEN."
+        run: echo "::notice::SonarCloud omitido, falta el secret SONAR_TOKEN."
 
   contract:
     name: Contrato OpenAPI
