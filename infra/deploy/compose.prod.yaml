@@ -1,0 +1,166 @@
+# Producción en un único servidor (paso 0.30). Uso:
+#
+#   cp .env.example .env   # y rellena los valores
+#   docker compose -f compose.prod.yaml --env-file .env up -d
+#
+# Solo Caddy publica puertos (80 y 443). Grafana queda en 127.0.0.1:3000 (acceso por túnel SSH).
+#
+#   https://${NORTE_DOMAIN}   SPA + /api, /oauth2, /login/oauth2 y /logout hacia el BFF
+#   https://${AUTH_DOMAIN}    Keycloak, en su propio subdominio: aísla sus cookies de las de la aplicación y evita
+#                             colisiones de rutas con la SPA.
+name: norte-prod
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  caddy:
+    <<: *restart
+    image: caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      NORTE_DOMAIN: ${NORTE_DOMAIN:?}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:?}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      default:
+        # app y bff validan el issuer público de Keycloak: estos alias hacen que lo resuelvan hacia Caddy por la red
+        # interna, sin salir a Internet.
+        aliases:
+          - ${NORTE_DOMAIN}
+          - ${AUTH_DOMAIN}
+
+  postgres:
+    <<: *restart
+    image: postgres:18.7-alpine3.24@sha256:0115267ab5a509022df9319c77be365cef335adb71556c75f60f5360ee247e71
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d norte"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    <<: *restart
+    image: quay.io/keycloak/keycloak:26.8.2@sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3
+    command: ["start"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?}
+      KC_HOSTNAME: https://${AUTH_DOMAIN}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      # Administrador temporal: crea uno definitivo en el realm master y borra este.
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:?}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"UP"' <&3
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  app:
+    <<: *restart
+    image: ghcr.io/kikomola/norte-app:${BACKEND_TAG:-latest}
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/norte
+      DB_APP_USER: norte_app
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?}
+      DB_OWNER_USER: norte_owner
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?}
+      OIDC_ISSUER_URI: https://${AUTH_DOMAIN}/realms/norte
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      DEPLOYMENT_ENVIRONMENT: production
+      TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.2}
+      LOG_FORMAT: ecs
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bff:
+    <<: *restart
+    image: ghcr.io/kikomola/norte-bff:${BACKEND_TAG:-latest}
+    environment:
+      OIDC_ISSUER_URI: https://${AUTH_DOMAIN}/realms/norte
+      BFF_CLIENT_ID: norte-bff
+      BFF_CLIENT_SECRET: ${BFF_CLIENT_SECRET:?}
+      API_URI: http://app:8081
+      SESSION_COOKIE_SECURE: "true"
+      # El prefijo __Host- obliga a Secure, Path=/ y sin Domain: la cookie no se comparte con subdominios.
+      SESSION_COOKIE_NAME: __Host-NORTE_SESSION
+      POST_LOGIN_REDIRECT: /
+      POST_LOGOUT_REDIRECT: https://${NORTE_DOMAIN}/
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      DEPLOYMENT_ENVIRONMENT: production
+    depends_on:
+      app:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      caddy:
+        condition: service_started
+
+  frontend:
+    <<: *restart
+    image: ghcr.io/kikomola/norte-frontend:${FRONTEND_TAG:-latest}
+
+  lgtm:
+    <<: *restart
+    image: grafana/otel-lgtm:0.41.1
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - lgtm-data:/data
+
+  backup:
+    <<: *restart
+    image: ghcr.io/kikomola/norte-backup:${BACKEND_TAG:-latest}
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      BACKUP_DATABASES: norte keycloak
+      BACKUP_TIME: ${BACKUP_TIME:-03:00}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:?}
+      BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:-norte}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      AWS_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:?}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:?}
+      AWS_DEFAULT_REGION: ${BACKUP_S3_REGION:-eu-west-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+  lgtm-data:

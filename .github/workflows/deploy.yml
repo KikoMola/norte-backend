@@ -1,0 +1,76 @@
+# Despliegue manual en el servidor con `just deploy` (paso 0.30).
+#
+# Secrets del entorno `production`:
+#   DEPLOY_HOST          usuario@host del servidor (p. ej. deploy@norte.example.com)
+#   DEPLOY_SSH_KEY       clave privada SSH con acceso a ese usuario
+#   DEPLOY_KNOWN_HOSTS   salida de `ssh-keyscan <host>` (verificación de la huella del servidor)
+#
+# El fichero .env de producción vive solo en el servidor (DEPLOY_DIR, /opt/norte por defecto).
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_tag:
+        description: Tag de las imágenes del backend (latest o sha-<commit>)
+        default: latest
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  JUST_VERSION: 1.59.0
+  JUST_SHA256: 409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+    steps:
+      - name: Comprobar secrets
+        id: check
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::notice::Despliegue omitido, faltan los secrets del entorno production."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.check.outputs.skip != 'true'
+        with:
+          persist-credentials: false
+
+      - name: Instalar just (release oficial con checksum)
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          archive="just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl -fsSLo "$archive" "https://github.com/casey/just/releases/download/${JUST_VERSION}/${archive}"
+          echo "${JUST_SHA256}  ${archive}" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin" && tar -xzf "$archive" -C "$HOME/.local/bin" just
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Configurar SSH
+        if: steps.check.outputs.skip != 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host *\n  IdentityFile ~/.ssh/id_deploy\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+
+      - name: just deploy
+        if: steps.check.outputs.skip != 'true'
+        env:
+          BACKEND_TAG: ${{ inputs.backend_tag }}
+        run: just deploy

@@ -7,6 +7,7 @@ set dotenv-load := false
 
 spectral := "@stoplight/spectral-cli@6.17.1"
 deploy_dir := env("DEPLOY_DIR", "/opt/norte")
+backend_tag := env("BACKEND_TAG", "latest")
 
 # Lista las recetas
 default:
@@ -44,8 +45,8 @@ run-app:
 run-bff:
     ./gradlew :bff:bootRun
 
-# Despliega en el servidor por SSH (necesita DEPLOY_HOST, p. ej. deploy@norte.example.com)
+# Despliega en el servidor por SSH (DEPLOY_HOST=deploy@norte.example.com; BACKEND_TAG opcional)
 deploy:
     ssh {{env("DEPLOY_HOST")}} "mkdir -p {{deploy_dir}}"
-    scp infra/deploy/compose.prod.yaml infra/deploy/Caddyfile {{env("DEPLOY_HOST")}}:{{deploy_dir}}/
-    ssh {{env("DEPLOY_HOST")}} "cd {{deploy_dir}} && docker compose -f compose.prod.yaml --env-file .env pull && docker compose -f compose.prod.yaml --env-file .env up -d --remove-orphans"
+    scp -r infra/deploy/compose.prod.yaml infra/deploy/Caddyfile infra/deploy/postgres-init {{env("DEPLOY_HOST")}}:{{deploy_dir}}/
+    ssh {{env("DEPLOY_HOST")}} "cd {{deploy_dir}} && export BACKEND_TAG={{backend_tag}} && docker compose -f compose.prod.yaml --env-file .env pull && docker compose -f compose.prod.yaml --env-file .env up -d --remove-orphans"

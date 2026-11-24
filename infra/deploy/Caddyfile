@@ -1,0 +1,40 @@
+{
+	email {$ACME_EMAIL}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+}
+
+# Aplicación: la SPA y, en las rutas del BFF, el BFF.
+{$NORTE_DOMAIN} {
+	import security_headers
+	encode zstd gzip
+
+	@bff path /api/* /oauth2/* /login/oauth2/* /logout
+	handle @bff {
+		reverse_proxy bff:8080
+	}
+
+	handle {
+		reverse_proxy frontend:8080
+	}
+}
+
+# Keycloak en su propio subdominio.
+{$AUTH_DOMAIN} {
+	import security_headers
+	encode zstd gzip
+
+	# La consola de administración y la API de administración no se publican; se usan por túnel SSH.
+	@admin path /admin /admin/*
+	respond @admin 404
+
+	reverse_proxy keycloak:8080
+}
