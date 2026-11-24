@@ -1,5 +1,7 @@
 # Norte · backend
 
+[![CI](https://github.com/KikoMola/norte-backend/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/KikoMola/norte-backend/actions/workflows/ci.yml)
+
 CRM + ERP open source para pymes españolas. Este repositorio contiene el backend; el frontend (Angular) vive en
 [norte-frontend](https://github.com/KikoMola/norte-frontend).
 
@@ -11,16 +13,19 @@ navegador ──cookie HttpOnly──▶ bff (8080) ──Bearer JWT──▶ ap
                                   └──OIDC──▶ Keycloak (8180)
 ```
 
-| Subproyecto | Qué es |
+| Carpeta | Qué es |
 | --- | --- |
 | `app/` | Monolito modular (Java 25, Spring Boot 4.2, Spring Modulith). Resource server: valida el JWT de Keycloak. |
 | `bff/` | Backend for Frontend (Spring Cloud Gateway Server MVC). Hace el login OIDC, guarda los tokens en la sesión del servidor y reenvía `/api/**` a `app` con el access token. El navegador nunca ve un token. |
-| `infra/` | Realm de Keycloak y scripts de PostgreSQL para el entorno local. |
+| `api/` | Contrato OpenAPI, fuente de verdad de la API, y su guía de estilo. |
+| `docs/` | ADRs, glosario y catálogo de errores. |
+| `infra/` | Realm de Keycloak y PostgreSQL para local (`keycloak/`, `postgres/`), imágenes (`docker/`) y producción (`deploy/`). |
 
 ### Cómo funciona la sesión
 
 - `GET /oauth2/authorization/keycloak` inicia el login (authorization code + PKCE).
-- La sesión va en la cookie `NORTE_SESSION` (`HttpOnly`, `SameSite=Lax`).
+- La sesión va en la cookie `NORTE_SESSION` (`HttpOnly`, `SameSite=Lax`; `__Host-NORTE_SESSION` y `Secure` en
+  producción).
 - CSRF: el BFF emite la cookie `XSRF-TOKEN` y espera la cabecera `X-XSRF-TOKEN` en las peticiones que modifican datos
   (Angular `HttpClient` lo hace solo).
 - `/api/**` sin sesión responde `401` en vez de redirigir.
@@ -29,17 +34,24 @@ navegador ──cookie HttpOnly──▶ bff (8080) ──Bearer JWT──▶ ap
 ## Requisitos
 
 - Docker
-- JDK 17 o superior para lanzar Gradle. El JDK 25 del proyecto lo descarga Gradle automáticamente si no lo tienes.
+- JDK 17 o superior para lanzar Gradle. El JDK del proyecto (Temurin 25, fijado en `.sdkmanrc`) lo descarga Gradle
+  automáticamente si no lo tienes.
+- [just](https://github.com/casey/just) para las tareas habituales (opcional: cada receta es un comando normal).
+- Node 24 (`.nvmrc`), solo para validar el contrato con Spectral.
 
-## Arrancar en local
+## Tareas habituales
 
-```bash
-docker compose up -d          # PostgreSQL, Keycloak, Grafana (otel-lgtm) y Mailpit
-./gradlew :app:bootRun        # API en http://localhost:8081
-./gradlew :bff:bootRun        # BFF en http://localhost:8080
-```
+| Comando | Qué hace |
+| --- | --- |
+| `just up` / `just down` | Levanta o para el entorno local: PostgreSQL, Keycloak, Grafana (otel-lgtm) y Mailpit |
+| `just run-app` | API en http://localhost:8081 |
+| `just run-bff` | BFF en http://localhost:8080 |
+| `just test` | Build y todos los tests (Testcontainers necesita Docker) |
+| `just api` | Valida `api/openapi.yaml` con Spectral y regenera el código del contrato |
+| `just reset-db` | Borra la base de datos local y la recrea vacía (pide confirmación) |
+| `just deploy` | Despliega en el servidor por SSH (ver [Despliegue](#despliegue)) |
 
-Después arranca el frontend (`npm start` en norte-frontend) y entra en http://localhost:4200.
+Con el backend en marcha, arranca el frontend (`npm start` en norte-frontend) y entra en http://localhost:4200.
 
 | Servicio | URL | Credenciales |
 | --- | --- | --- |
@@ -47,6 +59,8 @@ Después arranca el frontend (`npm start` en norte-frontend) y entra en http://l
 | Grafana | http://localhost:3000 | — |
 | Mailpit | http://localhost:8025 | — |
 | PostgreSQL | `localhost:5433/norte` | `norte_owner` (Flyway) y `norte_app` (aplicación) |
+
+PostgreSQL va en el puerto **5433** para no chocar con un PostgreSQL instalado en la máquina.
 
 Usuarios de prueba del realm `norte` (contraseña = usuario):
 
@@ -56,12 +70,45 @@ Usuarios de prueba del realm `norte` (contraseña = usuario):
 | `bruno` | `22222222-2222-2222-2222-222222222222` |
 
 > Todas las contraseñas y el secreto del cliente `norte-bff` de este repositorio son **solo para desarrollo**. En
-> producción llegan por variables de entorno (`BFF_CLIENT_SECRET`, `DB_APP_PASSWORD`, `DB_OWNER_PASSWORD`…).
+> producción llegan por variables de entorno.
 
-## Tests
+## Integración continua
 
-```bash
-./gradlew build
-```
+`.github/workflows/ci.yml` se ejecuta en cada push a `master` y en cada pull request:
 
-Los tests de integración usan Testcontainers, así que necesitan Docker.
+- **Build y tests** con Gradle y JDK 25, y análisis de las dependencias de los jars con Trivy.
+- **Contrato:** Spectral (`.spectral.yaml`) y oasdiff, que bloquea cambios incompatibles respecto a la versión
+  anterior.
+- **Seguridad:** Gitleaks sobre todo el historial y Trivy sobre el repositorio (dependencias, secretos y configuración).
+- **SonarQube Cloud** con quality gate, si existe el secret `SONAR_TOKEN`.
+- **Imágenes** (solo en `master`): `ghcr.io/kikomola/norte-app`, `norte-bff` y `norte-backup`, con tags `latest` y
+  `sha-<commit>`, analizadas con Trivy antes de publicarse.
+
+Las actions van fijadas por SHA y las herramientas (Trivy, Gitleaks, oasdiff) por digest de su imagen oficial.
+Renovate (`renovate.json`) propone las actualizaciones.
+
+## Despliegue
+
+Producción es un único servidor con Docker Compose (`infra/deploy/`):
+
+- **Caddy** con TLS automático: `https://NORTE_DOMAIN` sirve la SPA y manda `/api`, `/oauth2`, `/login/oauth2` y
+  `/logout` al BFF.
+- **Keycloak** en su propio subdominio (`https://AUTH_DOMAIN`), con la consola de administración sin publicar.
+- PostgreSQL con roles separados para Flyway y la aplicación, y una base de datos aparte para Keycloak.
+- **Copias diarias** de PostgreSQL a S3, o a un S3 compatible, con el servicio `backup`.
+- Grafana solo en `127.0.0.1:3000` del servidor (accede con `ssh -L 3000:localhost:3000`).
+
+Primer despliegue:
+
+1. Servidor con Docker y un usuario con acceso a Docker. DNS de `NORTE_DOMAIN` y `AUTH_DOMAIN` apuntando a él, y
+   puertos 80 y 443 abiertos.
+2. En el servidor, crea `/opt/norte/.env` a partir de `infra/deploy/.env.example`.
+3. Desde tu máquina: `DEPLOY_HOST=deploy@tu-servidor just deploy`, o el workflow **Deploy** (manual) con los secrets
+   `DEPLOY_HOST`, `DEPLOY_SSH_KEY` y `DEPLOY_KNOWN_HOSTS` en el entorno `production`.
+4. Crea el realm `norte` en Keycloak, por túnel SSH a la consola de administración, a partir de
+   `infra/keycloak/realm-norte.json` **sin** los usuarios de prueba y con un secreto nuevo para `norte-bff` (el
+   mismo que `BFF_CLIENT_SECRET`), y con las URL de redirección de tu dominio.
+
+## Contribuir
+
+Ver [CONTRIBUTING.md](CONTRIBUTING.md).
