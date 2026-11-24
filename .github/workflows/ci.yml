@@ -1,0 +1,192 @@
+# Pipeline del backend (paso 0.12): build y tests, contrato, análisis de calidad y seguridad, e imágenes.
+#
+# Todas las actions están fijadas por SHA de commit. Trivy, Gitleaks y oasdiff se ejecutan con su imagen oficial
+# fijada por digest en lugar de su action (trivy-action sufrió un secuestro de tags en marzo de 2026,
+# GHSA-69fq-xp46-6x23).
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  TRIVY_IMAGE: aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+  GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+  OASDIFF_IMAGE: tufin/oasdiff:v1.39.0@sha256:004bef22058ace818b61f0eb2f05efb89fc6a3882f68bf4db0b6a86f40723fe0
+  SPECTRAL_CLI: '@stoplight/spectral-cli@6.17.1'
+
+jobs:
+  build:
+    name: Build y tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # SonarCloud necesita el historial para atribuir cambios.
+          persist-credentials: false
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version-file: .sdkmanrc
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+
+      - name: Build y tests
+        run: sh ./gradlew build --console=plain
+
+      - name: Informes de tests
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports
+          path: '*/build/reports/tests/'
+          retention-days: 7
+
+      - name: Dependencias de los jars (Trivy)
+        run: |
+          for module in app bff; do
+            docker run --rm -v "$PWD:/src" -w /src "$TRIVY_IMAGE" \
+              rootfs --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$module/build/libs"
+          done
+
+      - name: SonarCloud
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@70bad232163b09d998ea0707ee80c0ec80798c16 # v8.5.1
+        with:
+          args: -Dsonar.qualitygate.wait=true
+
+      - name: SonarCloud omitido
+        if: env.SONAR_TOKEN == ''
+        run: echo "::notice::SonarCloud omitido: falta el secret SONAR_TOKEN."
+
+  contract:
+    name: Contrato OpenAPI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Spectral
+        run: npx --yes "$SPECTRAL_CLI" lint api/openapi.yaml --ruleset .spectral.yaml --fail-severity=warn
+
+      - name: Cambios incompatibles (oasdiff)
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: |
+          if [ -z "$BASE_REF" ] || [ "$BASE_REF" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BASE_REF:api/openapi.yaml" 2>/dev/null; then
+            echo "::notice::No hay versión anterior del contrato con la que comparar."
+            exit 0
+          fi
+          mkdir -p .ci
+          git show "$BASE_REF:api/openapi.yaml" > .ci/base-openapi.yaml
+          docker run --rm -v "$PWD:/w" -w /w "$OASDIFF_IMAGE" \
+            breaking .ci/base-openapi.yaml api/openapi.yaml --fail-on ERR --format githubactions
+
+  security:
+    name: Seguridad del repositorio
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # Gitleaks revisa todo el historial.
+          persist-credentials: false
+
+      - name: Gitleaks
+        run: >
+          docker run --rm -v "$PWD:/repo" -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory
+          -e GIT_CONFIG_VALUE_0=/repo "$GITLEAKS_IMAGE" git /repo --redact --verbose --exit-code 1
+
+      - name: Trivy (dependencias, secretos y configuración)
+        run: >
+          docker run --rm -v "$PWD:/src" -w /src "$TRIVY_IMAGE"
+          fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 .
+
+  images:
+    name: Imágenes (${{ matrix.module }})
+    needs: [build, contract, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - module: app
+            port: '8081'
+          - module: bff
+            port: '8080'
+    env:
+      IMAGE: ghcr.io/kikomola/norte-${{ matrix.module }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest
+
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/Dockerfile
+          build-args: |
+            MODULE=${{ matrix.module }}
+            PORT=${{ matrix.port }}
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.module }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.module }}
+
+      - name: Trivy (imagen)
+        run: >
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE"
+          image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$IMAGE:latest"
+
+      - name: Push
+        run: docker push --all-tags "$IMAGE"
