@@ -36,6 +36,8 @@ public class Problems {
 		var problem = new ProblemDto(TYPE_BASE + slug(code), title, status.value(), code);
 		problem.setDetail(detail);
 		problem.setTraceId(currentTraceId());
+		// El DTO generado inicializa errors a una lista vacía; solo se envía en los errores de validación.
+		problem.setErrors(null);
 		return problem;
 	}
 

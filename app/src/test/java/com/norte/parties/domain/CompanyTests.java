@@ -29,6 +29,13 @@ class CompanyTests {
 	}
 
 	@Test
+	void truncatesTimestampsToDatabasePrecision() {
+		Company company = Company.create(TENANT, "Acme", TaxId.of("B12345674"), Instant.parse("2026-11-24T09:30:00.1234567Z"));
+
+		assertThat(company.createdAt()).isEqualTo(Instant.parse("2026-11-24T09:30:00.123456Z"));
+	}
+
+	@Test
 	void rejectsBlankName() {
 		assertThatThrownBy(() -> Company.create(TENANT, "   ", TaxId.of("B12345674"), NOW))
 			.isInstanceOf(IllegalArgumentException.class);

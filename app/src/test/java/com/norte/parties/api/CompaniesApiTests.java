@@ -57,7 +57,8 @@ class CompaniesApiTests extends IntegrationTest {
 		mvc.perform(get(COMPANIES + "/" + id).with(userOf(TENANT_B, "bruno")))
 			.andExpect(status().isNotFound())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-			.andExpect(jsonPath("$.code").value("company.not_found"));
+			.andExpect(jsonPath("$.code").value("company.not_found"))
+			.andExpect(jsonPath("$.errors").doesNotExist());
 	}
 
 	@Test

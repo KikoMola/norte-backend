@@ -1,6 +1,7 @@
 package com.norte.parties.domain;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -61,7 +62,8 @@ public class Company {
 		Objects.requireNonNull(tenantId, "tenantId");
 		Objects.requireNonNull(taxId, "taxId");
 		Objects.requireNonNull(now, "now");
-		return new Company(UUID.randomUUID(), tenantId, normalizeName(name), taxId, now);
+		// PostgreSQL guarda microsegundos: se trunca aquí para que la respuesta del alta y las lecturas coincidan.
+		return new Company(UUID.randomUUID(), tenantId, normalizeName(name), taxId, now.truncatedTo(ChronoUnit.MICROS));
 	}
 
 	static String normalizeName(String name) {
