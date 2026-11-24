@@ -1,0 +1,56 @@
+extends:
+  - spectral:oas
+
+# Reglas propias de la guía de estilo (api/README.md).
+rules:
+  info-license: off # Pendiente de elegir licencia.
+  info-contact: off
+  operation-description: off # Basta con summary; la descripción larga es opcional.
+  oas3-unused-component: off # Los componentes comunes (Money, Address, AuditEvent…) se definen antes de usarse (paso 0.21).
+
+  norte-paths-kebab-case:
+    description: Las rutas van en kebab-case.
+    severity: error
+    given: $.paths
+    then:
+      field: '@key'
+      function: pattern
+      functionOptions:
+        match: '^(/([a-z0-9]+(-[a-z0-9]+)*|\{[a-z][a-zA-Z0-9]*\}))+$'
+
+  norte-operation-id-camel-case:
+    description: operationId en camelCase.
+    severity: error
+    given: $.paths[*][get,post,put,patch,delete]
+    then:
+      field: operationId
+      function: pattern
+      functionOptions:
+        match: '^[a-z][a-zA-Z0-9]*$'
+
+  norte-properties-camel-case:
+    description: Las propiedades JSON van en camelCase.
+    severity: error
+    given: $.components.schemas..properties
+    then:
+      field: '@key'
+      function: pattern
+      functionOptions:
+        match: '^[a-z][a-zA-Z0-9]*$'
+
+  norte-errors-are-problem-details:
+    description: Las respuestas de error usan application/problem+json.
+    severity: error
+    given: $.components.responses[*].content
+    then:
+      field: application/json
+      function: falsy
+
+  norte-no-tenant-parameter:
+    description: El tenant sale del token, nunca de un parámetro.
+    severity: error
+    given: $..parameters[*].name
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: '/^tenant/i'
