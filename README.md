@@ -43,7 +43,7 @@ navegador ──cookie HttpOnly──▶ bff (8080) ──Bearer JWT──▶ ap
 
 | Comando | Qué hace |
 | --- | --- |
-| `just up` / `just down` | Levanta o para el entorno local: PostgreSQL, Keycloak, Grafana (otel-lgtm) y Mailpit |
+| `just up` / `just down` | Levanta o para el entorno local: PostgreSQL, Keycloak, Grafana (otel-lgtm), Mailpit y SeaweedFS |
 | `just run-app` | API en http://localhost:8081 |
 | `just run-bff` | BFF en http://localhost:8080 |
 | `just test` | Build y todos los tests (Testcontainers necesita Docker) |
@@ -60,6 +60,7 @@ Con el backend en marcha, arranca el frontend (`npm start` en norte-frontend) y 
 | Keycloak | http://localhost:8180 | `admin` / `admin` |
 | Grafana | http://localhost:3000 | — |
 | Mailpit | http://localhost:8025 | — |
+| SeaweedFS (API S3 de ficheros) | http://localhost:8333 | `norte-app` / `norte-files-dev-secret` |
 | PostgreSQL | `localhost:5433/norte` | `norte_owner` (Flyway) y `norte_app` (aplicación) |
 
 PostgreSQL va en el puerto **5433** para no chocar con un PostgreSQL instalado en la máquina.
@@ -122,13 +123,16 @@ Producción es un único servidor con Docker Compose (`infra/deploy/`):
 - **Caddy** con TLS automático: `https://NORTE_DOMAIN` sirve la SPA y manda `/api`, `/oauth2`, `/login/oauth2` y
   `/logout` al BFF.
 - **Keycloak** en su propio subdominio (`https://AUTH_DOMAIN`), con la consola de administración sin publicar.
+- **Ficheros** en SeaweedFS, compatible con S3, con una carpeta por tenant. El navegador descarga con URLs firmadas
+  de 5 minutos desde `https://FILES_DOMAIN`, que solo admite lecturas. Se usa SeaweedFS porque MinIO comunitario
+  está archivado y ya no publica imágenes.
 - PostgreSQL con roles separados para Flyway y la aplicación, y una base de datos aparte para Keycloak.
 - **Copias diarias** de PostgreSQL a S3, o a un S3 compatible, con el servicio `backup`.
 - Grafana solo en `127.0.0.1:3000` del servidor (accede con `ssh -L 3000:localhost:3000`).
 
 Primer despliegue:
 
-1. Servidor con Docker y un usuario con acceso a Docker. DNS de `NORTE_DOMAIN` y `AUTH_DOMAIN` apuntando a él, y
+1. Servidor con Docker y un usuario con acceso a Docker. DNS de `NORTE_DOMAIN`, `AUTH_DOMAIN` y `FILES_DOMAIN` apuntando a él, y
    puertos 80 y 443 abiertos.
 2. En el servidor, crea `/opt/norte/.env` a partir de `infra/deploy/.env.example`.
 3. Desde tu máquina: `DEPLOY_HOST=deploy@tu-servidor just deploy`, o el workflow **Deploy** (manual) con los secrets

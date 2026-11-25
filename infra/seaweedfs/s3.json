@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "norte-app",
+      "credentials": [{ "accessKey": "norte-app", "secretKey": "norte-files-dev-secret" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

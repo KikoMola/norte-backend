@@ -38,3 +38,14 @@
 
 	reverse_proxy keycloak:8080
 }
+
+# Descargas de ficheros (paso 1.7). SeaweedFS comprueba la firma de cada URL; aquí solo se deja leer. Caddy conserva
+# el Host original, que forma parte de la firma.
+{$FILES_DOMAIN} {
+	import security_headers
+
+	@write not method GET HEAD
+	respond @write 405
+
+	reverse_proxy seaweedfs:8333
+}

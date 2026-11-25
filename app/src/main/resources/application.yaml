@@ -39,6 +39,14 @@ norte:
     realm: norte
     client-id: norte-provisioner
     client-secret: ${KEYCLOAK_PROVISIONER_SECRET:norte-provisioner-dev-secret}
+  files:
+    # Almacén compatible con S3 (paso 1.7): SeaweedFS de compose.yaml en local.
+    endpoint: ${FILES_ENDPOINT:http://localhost:8333}
+    # Dirección pública para las URLs firmadas; en local, la misma.
+    public-endpoint: ${FILES_PUBLIC_ENDPOINT:}
+    bucket: ${FILES_BUCKET:norte}
+    access-key: ${FILES_ACCESS_KEY:norte-app}
+    secret-key: ${FILES_SECRET_KEY:norte-files-dev-secret}
 
 logging:
   structured:

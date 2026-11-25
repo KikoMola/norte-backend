@@ -17,6 +17,11 @@
 
 | `KEYCLOAK_URL` | `http://localhost:8180` | URL base de Keycloak para su API de administración. Solo la usa el comando `provision-tenant`. |
 | `KEYCLOAK_PROVISIONER_SECRET` | `norte-provisioner-dev-secret` | Secreto del cliente de servicio `norte-provisioner`. **Solo desarrollo**; en producción, obligatorio. |
+| `FILES_ENDPOINT` | `http://localhost:8333` | API S3 del almacén de ficheros (SeaweedFS), vista desde la aplicación. |
+| `FILES_PUBLIC_ENDPOINT` | (el mismo que `FILES_ENDPOINT`) | Dirección con la que el navegador abre las URLs firmadas. En producción, `https://${FILES_DOMAIN}`. |
+| `FILES_BUCKET` | `norte` | Bucket de los ficheros. Se crea con la primera escritura. Dentro, cada tenant tiene su carpeta `{tenantId}/`. |
+| `FILES_ACCESS_KEY` | `norte-app` | Usuario S3 de la aplicación. |
+| `FILES_SECRET_KEY` | `norte-files-dev-secret` | Su clave. **Solo desarrollo**; en producción, obligatoria.
 
 La audiencia exigida es `norte-api` (fija; la añade el mapper del cliente `norte-bff` en Keycloak).
 

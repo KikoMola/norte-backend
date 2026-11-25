@@ -21,6 +21,7 @@ extra["springModulithVersion"] = "2.2.0"
 val archunitVersion = "1.5.1"
 val testcontainersKeycloakVersion = "4.4.1"
 val jqwikVersion = "1.10.2"
+val awsSdkVersion = "2.59.9"
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -33,6 +34,14 @@ dependencies {
 	implementation("org.flywaydb:flyway-database-postgresql")
 	// Historial de cambios (paso 1.4). Versión gestionada por Spring Boot, la misma que Hibernate ORM.
 	implementation("org.hibernate.orm:hibernate-envers")
+	// Ficheros en un almacén compatible con S3 (paso 1.7). Solo el cliente síncrono con el HTTP del JDK: sin Netty ni
+	// Apache HttpClient, que no hacen falta.
+	implementation(platform("software.amazon.awssdk:bom:$awsSdkVersion"))
+	implementation("software.amazon.awssdk:s3") {
+		exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
+		exclude(group = "software.amazon.awssdk", module = "apache-client")
+	}
+	implementation("software.amazon.awssdk:url-connection-client")
 	implementation("org.springframework.modulith:spring-modulith-observability-api")
 	implementation("org.springframework.modulith:spring-modulith-starter-core")
 	implementation("org.springframework.modulith:spring-modulith-starter-jpa")

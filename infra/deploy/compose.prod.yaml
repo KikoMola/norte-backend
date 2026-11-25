@@ -8,6 +8,7 @@
 #   https://${NORTE_DOMAIN}   SPA + /api, /oauth2, /login/oauth2 y /logout hacia el BFF
 #   https://${AUTH_DOMAIN}    Keycloak, en su propio subdominio: aísla sus cookies de las de la aplicación y evita
 #                             colisiones de rutas con la SPA.
+#   https://${FILES_DOMAIN}   Descargas de ficheros con URL firmada (SeaweedFS), solo GET y HEAD.
 name: norte-prod
 
 x-restart: &restart
@@ -24,6 +25,7 @@ services:
     environment:
       NORTE_DOMAIN: ${NORTE_DOMAIN:?}
       AUTH_DOMAIN: ${AUTH_DOMAIN:?}
+      FILES_DOMAIN: ${FILES_DOMAIN:?}
       ACME_EMAIL: ${ACME_EMAIL:?}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -100,6 +102,11 @@ services:
       # Solo para el comando provision-tenant (alta de tenants, paso 1.1).
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_PROVISIONER_SECRET: ${KEYCLOAK_PROVISIONER_SECRET:?}
+      # Ficheros (paso 1.7): la aplicación habla con SeaweedFS por la red interna y firma las URLs para el dominio
+      # público, que es el que abre el navegador.
+      FILES_ENDPOINT: http://seaweedfs:8333
+      FILES_PUBLIC_ENDPOINT: https://${FILES_DOMAIN}
+      FILES_SECRET_KEY: ${FILES_SECRET_KEY:?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
       DEPLOYMENT_ENVIRONMENT: production
       TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.2}
@@ -130,6 +137,22 @@ services:
         condition: service_healthy
       caddy:
         condition: service_started
+
+  # Ficheros (paso 1.7). El secreto llega por el entorno: el s3.json se genera al arrancar, legible solo dentro del
+  # contenedor, y no se guarda en el repositorio.
+  seaweedfs:
+    <<: *restart
+    image: chrislusf/seaweedfs:4.55@sha256:7ca46aeae2f223b37e5d91593c17ab37738eec6df6ab69b48a0487f7643342b9
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        umask 077
+        printf '{"identities":[{"name":"norte-app","credentials":[{"accessKey":"norte-app","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$$FILES_SECRET_KEY" > /tmp/s3.json
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json
+    environment:
+      FILES_SECRET_KEY: ${FILES_SECRET_KEY:?}
+    volumes:
+      - seaweedfs-data:/data
 
   frontend:
     <<: *restart
@@ -167,3 +190,4 @@ volumes:
   caddy-config:
   postgres-data:
   lgtm-data:
+  seaweedfs-data:
