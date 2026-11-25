@@ -89,6 +89,12 @@ class ProblemAdvice {
 				"Otro usuario ha modificado este registro", "Recarga los datos y vuelve a intentarlo."));
 	}
 
+	@ExceptionHandler(PreconditionFailedException.class)
+	ResponseEntity<ProblemDto> preconditionFailed(PreconditionFailedException ex) {
+		return problems.response(problems.problem(HttpStatus.PRECONDITION_FAILED, "concurrency.precondition_failed",
+				"Otro usuario ha modificado este registro", ex.getMessage()));
+	}
+
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	ResponseEntity<ProblemDto> unreadable(HttpMessageNotReadableException ex) {
 		return problems.response(problems.problem(HttpStatus.BAD_REQUEST, "request.malformed",

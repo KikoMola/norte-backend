@@ -106,7 +106,7 @@ public abstract class IntegrationTest {
 		private static final String OWNER = "norte_owner";
 
 		public void truncateBusinessTables() {
-			owner.execute("TRUNCATE parties.company, shared.role_permission, shared.tenant_module, "
+			owner.execute("TRUNCATE parties.company, shared.idempotency_key, shared.role_permission, shared.tenant_module, "
 					+ "shared.tenant");
 		}
 

@@ -12,6 +12,7 @@ import com.norte.contract.model.PageInfoDto;
 import com.norte.parties.application.CompanyService;
 import com.norte.parties.application.CompanySort;
 import com.norte.parties.domain.Company;
+import com.norte.shared.api.ETags;
 import com.norte.shared.api.problem.InvalidParameterException;
 import com.norte.shared.api.security.RequiresPermission;
 import com.norte.shared.domain.access.Permission;
@@ -52,7 +53,7 @@ class CompaniesController implements CompaniesApi {
 	@Override
 	@RequiresPermission(Permission.COMPANY_EDIT)
 	public ResponseEntity<CompanyDto> createCompany(CompanyCreateDto body, UUID idempotencyKey) {
-		// Idempotency-Key se acepta ya en el contrato; su tratamiento llega en el paso 1.6.
+		// Idempotency-Key lo trata IdempotencyFilter antes de llegar aquí (paso 1.6).
 		Company company = companies.create(body.getName(), body.getTaxId());
 		return ResponseEntity.created(URI.create(COMPANIES_PATH + company.id()))
 			.eTag(etag(company))
@@ -67,7 +68,7 @@ class CompaniesController implements CompaniesApi {
 	}
 
 	private static String etag(Company company) {
-		return "\"" + company.version() + "\"";
+		return ETags.of(company.version());
 	}
 
 	static CompanyDto toDto(Company company) {

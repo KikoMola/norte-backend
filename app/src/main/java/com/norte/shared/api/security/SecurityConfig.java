@@ -3,6 +3,7 @@ package com.norte.shared.api.security;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+import com.norte.shared.api.idempotency.IdempotencyFilter;
 import com.norte.shared.application.TenantContext;
 
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -27,8 +28,8 @@ import org.springframework.security.web.SecurityFilterChain;
 class SecurityConfig {
 
 	@Bean
-	SecurityFilterChain apiSecurity(HttpSecurity http, ProblemSecurityHandlers handlers, TenantFilter tenantFilter)
-			throws Exception {
+	SecurityFilterChain apiSecurity(HttpSecurity http, ProblemSecurityHandlers handlers, TenantFilter tenantFilter,
+			IdempotencyFilter idempotencyFilter) throws Exception {
 		http.authorizeHttpRequests(requests -> requests
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.anyRequest().authenticated())
@@ -39,14 +40,23 @@ class SecurityConfig {
 			.exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(handlers).accessDeniedHandler(handlers))
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.csrf(AbstractHttpConfigurer::disable)
-			.addFilterAfter(tenantFilter, BearerTokenAuthenticationFilter.class);
+			.addFilterAfter(tenantFilter, BearerTokenAuthenticationFilter.class)
+			// Después del tenant: las claves de idempotencia son por tenant (paso 1.6).
+			.addFilterAfter(idempotencyFilter, TenantFilter.class);
 		return http.build();
 	}
 
-	/** El filtro solo debe correr dentro de la cadena de seguridad, no además como filtro de servlet. */
+	/** Los filtros solo deben correr dentro de la cadena de seguridad, no además como filtros de servlet. */
 	@Bean
 	FilterRegistrationBean<TenantFilter> tenantFilterRegistration(TenantFilter tenantFilter) {
 		var registration = new FilterRegistrationBean<>(tenantFilter);
+		registration.setEnabled(false);
+		return registration;
+	}
+
+	@Bean
+	FilterRegistrationBean<IdempotencyFilter> idempotencyFilterRegistration(IdempotencyFilter idempotencyFilter) {
+		var registration = new FilterRegistrationBean<>(idempotencyFilter);
 		registration.setEnabled(false);
 		return registration;
 	}

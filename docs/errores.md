@@ -38,7 +38,10 @@ Implementación: `com.norte.shared.api.problem.ProblemAdvice` (excepciones de la
 | `request.not_acceptable` | 406 | No se puede responder en el formato pedido en `Accept`. |
 | `request.unsupported_media_type` | 415 | `Content-Type` no admitido. |
 | `request.invalid` | 4xx | Otro error del cliente detectado por Spring MVC. |
-| `concurrency.conflict` | 409 | Otro usuario modificó el registro a la vez (bloqueo optimista). |
+| `concurrency.conflict` | 409 | Otro usuario modificó el registro a la vez (bloqueo optimista con `@Version`). |
+| `concurrency.precondition_failed` | 412 | El `If-Match` no coincide con la versión actual: el recurso cambió desde que se leyó. |
+| `idempotency.key_reused` | 422 | La `Idempotency-Key` ya se usó con otra petición (otra ruta u otro cuerpo). |
+| `idempotency.in_progress` | 409 | La petición original con esa `Idempotency-Key` aún se está procesando. |
 | `internal` | 500 | Error inesperado. Se registra en el log con su `traceId`. |
 
 ## Códigos de `errors[]` (validación)

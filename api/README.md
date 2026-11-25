@@ -57,7 +57,10 @@ compara con la versión de `master` mediante oasdiff para detectar cambios incom
 ### Concurrencia e idempotencia
 
 - Los recursos modificables devuelven `ETag`; las actualizaciones exigen `If-Match` y responden `412` si no coincide.
-- Los POST con efectos importantes aceptan `Idempotency-Key` (UUID). Repetir la clave devuelve la misma respuesta.
+- Los POST con efectos importantes aceptan `Idempotency-Key` (UUID). Repetir la clave devuelve la misma respuesta,
+  con la cabecera `Idempotency-Replayed: true`, sin repetir el efecto. Las respuestas 5xx no se guardan (se puede
+  reintentar con la misma clave), la misma clave con otra petición es un 422 `idempotency.key_reused` y las claves
+  caducan a las 24 horas. Son por tenant.
 
 ### Seguridad
 
