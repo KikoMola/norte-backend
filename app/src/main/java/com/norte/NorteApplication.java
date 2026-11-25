@@ -14,7 +14,9 @@ public class NorteApplication {
 		var application = new SpringApplication(NorteApplication.class);
 		boolean command = Commands.isCommand(args);
 		if (command) {
-			// Comandos de administración (alta de tenant…): sin servidor web y terminan al acabar.
+			// Comandos de administración (alta de tenant…): sin servidor web y terminan al acabar. Sin el reinicio
+			// de devtools, que ejecuta la aplicación en otro hilo y haría que un fallo terminase con código 0.
+			System.setProperty("spring.devtools.restart.enabled", "false");
 			application.setWebApplicationType(WebApplicationType.NONE);
 		}
 		ConfigurableApplicationContext context = application.run(args);

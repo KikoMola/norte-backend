@@ -120,3 +120,8 @@ tasks.jacocoTestReport {
 		fileTree(it) { exclude("com/norte/contract/**") }
 	}))
 }
+
+// La consola de Windows no usa UTF-8 por defecto: sin esto, los mensajes de los comandos salen con los acentos rotos.
+tasks.bootRun {
+	jvmArgs("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8")
+}

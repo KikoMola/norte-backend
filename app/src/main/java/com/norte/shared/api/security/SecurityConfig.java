@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import com.norte.shared.api.idempotency.IdempotencyFilter;
 import com.norte.shared.application.TenantContext;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +25,9 @@ import org.springframework.security.web.SecurityFilterChain;
  * La API es un resource server sin estado: solo acepta un JWT de Keycloak como Bearer (lo añade el BFF). No hay
  * cookies, así que CSRF no aplica aquí; lo gestiona el BFF.
  */
+// Solo con servidor web: los comandos de administración (provision-tenant) arrancan sin él.
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 class SecurityConfig {
 
 	@Bean
