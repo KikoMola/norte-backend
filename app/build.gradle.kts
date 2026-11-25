@@ -27,8 +27,12 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
+	// Email con plantillas (paso 1.8). Thymeleaf servirá también para el PDF de la factura.
+	implementation("org.springframework.boot:spring-boot-starter-mail")
 	implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
+	// Solo el motor, sin el starter: la API no devuelve vistas y el motor propio resuelve HTML y texto.
+	implementation("org.thymeleaf:thymeleaf-spring6")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.flywaydb:flyway-database-postgresql")

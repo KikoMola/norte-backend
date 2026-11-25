@@ -107,6 +107,14 @@ services:
       FILES_ENDPOINT: http://seaweedfs:8333
       FILES_PUBLIC_ENDPOINT: https://${FILES_DOMAIN}
       FILES_SECRET_KEY: ${FILES_SECRET_KEY:?}
+      # Correo (paso 1.8) por un proveedor SMTP externo, con usuario y STARTTLS.
+      MAIL_HOST: ${MAIL_HOST:?}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:?}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?}
+      MAIL_SMTP_AUTH: "true"
+      MAIL_STARTTLS: "true"
+      MAIL_FROM: ${MAIL_FROM:?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
       DEPLOYMENT_ENVIRONMENT: production
       TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.2}

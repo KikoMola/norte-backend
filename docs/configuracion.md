@@ -22,6 +22,11 @@
 | `FILES_BUCKET` | `norte` | Bucket de los ficheros. Se crea con la primera escritura. Dentro, cada tenant tiene su carpeta `{tenantId}/`. |
 | `FILES_ACCESS_KEY` | `norte-app` | Usuario S3 de la aplicación. |
 | `FILES_SECRET_KEY` | `norte-files-dev-secret` | Su clave. **Solo desarrollo**; en producción, obligatoria.
+| `MAIL_HOST` / `MAIL_PORT` | `localhost` / `1025` | Servidor SMTP. En local, Mailpit (los correos se ven en http://localhost:8025). |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | (vacíos) | Credenciales SMTP. Solo con `MAIL_SMTP_AUTH=true`. |
+| `MAIL_SMTP_AUTH` | `false` | `true` si el servidor pide usuario y contraseña. |
+| `MAIL_STARTTLS` | `false` | `true` para cifrar la conexión con STARTTLS (obligatorio con proveedores reales). |
+| `MAIL_FROM` | `no-reply@norte.localhost` | Remitente de todos los correos. El nombre visible es el del tenant y `Reply-To` su correo. |
 
 La audiencia exigida es `norte-api` (fija; la añade el mapper del cliente `norte-bff` en Keycloak).
 

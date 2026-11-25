@@ -1,0 +1,16 @@
+[(#{mail.invoice.greeting(${customerName})})]
+
+[(#{mail.invoice.intro(${invoiceNumber}, ${issueDate})})]
+
+[(#{mail.invoice.total})]: [(${total})]
+[# th:if="${dueDate}"][(#{mail.invoice.dueDate})]: [(${dueDate})]
+[/][# th:if="${message}"]
+[(${message})]
+[/]
+[(#{mail.invoice.questions})]
+
+[(#{mail.signature})]
+[(${senderName})]
+
+--
+[(#{mail.footer(${senderName})})]

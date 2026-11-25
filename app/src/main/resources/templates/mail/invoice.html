@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!--/*
+  Envío de una factura con su PDF adjunto (paso 1.8; lo usa el paso 1.16).
+  Variables: customerName, invoiceNumber, issueDate, total, dueDate (opcional), message (opcional), ya formateadas.
+*/-->
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{mail/layout.html :: layout(~{::title}, ~{::#content})}">
+<head>
+<title th:text="#{mail.invoice.subject(${invoiceNumber}, ${senderName})}">Factura F-2026-0001 de Acme Ibérica S.L.</title>
+</head>
+<body>
+<div id="content">
+<p style="margin: 0 0 16px;" th:text="#{mail.invoice.greeting(${customerName})}">Hola, Cerámicas del Turia:</p>
+<p style="margin: 0 0 20px;" th:text="#{mail.invoice.intro(${invoiceNumber}, ${issueDate})}">Adjuntamos la factura F-2026-0001, con fecha 25 nov 2026.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 20px; border-collapse: collapse;">
+<tr>
+<td style="padding: 6px 24px 6px 0; color: #5e5e59;" th:text="#{mail.invoice.total}">Importe total</td>
+<td style="padding: 6px 0; font-weight: bold;" th:text="${total}">1.210,00 €</td>
+</tr>
+<tr th:if="${dueDate}">
+<td style="padding: 6px 24px 6px 0; color: #5e5e59;" th:text="#{mail.invoice.dueDate}">Vencimiento</td>
+<td style="padding: 6px 0;" th:text="${dueDate}">25 dic 2026</td>
+</tr>
+</table>
+<p th:if="${message}" style="margin: 0 0 20px; white-space: pre-line;" th:text="${message}">Mensaje del emisor.</p>
+<p style="margin: 0 0 20px;" th:text="#{mail.invoice.questions}">Si tiene alguna pregunta, responda a este correo.</p>
+<p style="margin: 0;"><span th:text="#{mail.signature}">Un saludo,</span><br><span th:text="${senderName}">Acme Ibérica S.L.</span></p>
+</div>
+</body>
+</html>

@@ -22,6 +22,23 @@ spring:
       org.hibernate.envers.audit_table_suffix: _aud
   jackson:
     default-property-inclusion: non_null
+  mail:
+    # SMTP (paso 1.8). En local, Mailpit de compose.yaml: recoge todo y lo enseña en http://localhost:8025.
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:false}
+      mail.smtp.starttls.required: ${MAIL_STARTTLS:false}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+  messages:
+    # Textos de las plantillas de correo, por idioma (paso 1.8).
+    basename: i18n/mail
+    fallback-to-system-locale: false
   security:
     oauth2:
       resourceserver:
@@ -39,6 +56,9 @@ norte:
     realm: norte
     client-id: norte-provisioner
     client-secret: ${KEYCLOAK_PROVISIONER_SECRET:norte-provisioner-dev-secret}
+  mail:
+    # Remitente de todos los correos. El nombre visible es el del tenant y las respuestas van a su correo.
+    from: ${MAIL_FROM:no-reply@norte.localhost}
   files:
     # Almacén compatible con S3 (paso 1.7): SeaweedFS de compose.yaml en local.
     endpoint: ${FILES_ENDPOINT:http://localhost:8333}
