@@ -8,6 +8,7 @@ import com.norte.shared.domain.error.ConflictException;
 import com.norte.shared.domain.error.DomainException;
 import com.norte.shared.domain.error.ForbiddenException;
 import com.norte.shared.domain.error.NotFoundException;
+import com.norte.shared.domain.error.StaleVersionException;
 import com.norte.shared.domain.error.ValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * Traduce las excepciones a Problem Details (paso 0.17). Los códigos están en {@code docs/errores.md}.
@@ -93,6 +95,18 @@ class ProblemAdvice {
 	ResponseEntity<ProblemDto> preconditionFailed(PreconditionFailedException ex) {
 		return problems.response(problems.problem(HttpStatus.PRECONDITION_FAILED, "concurrency.precondition_failed",
 				"Otro usuario ha modificado este registro", ex.getMessage()));
+	}
+
+	@ExceptionHandler(StaleVersionException.class)
+	ResponseEntity<ProblemDto> staleVersion(StaleVersionException ex) {
+		return problems.response(problems.problem(HttpStatus.PRECONDITION_FAILED, ex.code(), ex.getMessage(),
+				"Recarga los datos y vuelve a intentarlo."));
+	}
+
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	ResponseEntity<ProblemDto> tooLarge(MaxUploadSizeExceededException ex) {
+		return problems.response(problems.problem(HttpStatus.CONTENT_TOO_LARGE, "request.too_large",
+				"El fichero es demasiado grande", null));
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)

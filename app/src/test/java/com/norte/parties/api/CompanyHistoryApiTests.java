@@ -99,7 +99,8 @@ class CompanyHistoryApiTests extends IntegrationTest {
 	void auditTablesAreIsolatedByTenant() throws Exception {
 		createAcme();
 
-		String revisions = "select count(*) from shared.revision";
+		// Las revisiones de la empresa; el alta del tenant deja otras (sus ajustes iniciales).
+		String revisions = "select count(*) from shared.revision r join parties.company_aud a on a.rev = r.id";
 		String audited = "select count(*) from parties.company_aud";
 		assertThat(database.asTenant(TENANT_A).queryForObject(revisions, Integer.class)).isEqualTo(1);
 		assertThat(database.asTenant(TENANT_A).queryForObject(audited, Integer.class)).isEqualTo(1);

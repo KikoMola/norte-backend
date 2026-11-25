@@ -5,7 +5,7 @@ package com.norte.shared.domain.error;
  * Problem Details y sirve de clave de traducción en el frontend. Catálogo en {@code docs/errores.md}.
  */
 public abstract sealed class DomainException extends RuntimeException
-		permits NotFoundException, ConflictException, ValidationException, ForbiddenException {
+		permits NotFoundException, ConflictException, ValidationException, ForbiddenException, StaleVersionException {
 
 	private final String code;
 

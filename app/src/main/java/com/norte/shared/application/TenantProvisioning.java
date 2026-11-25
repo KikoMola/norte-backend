@@ -79,7 +79,7 @@ public class TenantProvisioning {
 			for (String role : Permission.defaultRoles()) {
 				tenants.grant(tenantId, role, Permission.defaultsFor(role));
 			}
-			seeders.forEach(seeder -> seeder.seed(tenantId));
+			seeders.forEach(seeder -> seeder.seed(tenantId, tenantName));
 		}));
 	}
 

@@ -39,7 +39,8 @@ Implementación: `com.norte.shared.api.problem.ProblemAdvice` (excepciones de la
 | `request.unsupported_media_type` | 415 | `Content-Type` no admitido. |
 | `request.invalid` | 4xx | Otro error del cliente detectado por Spring MVC. |
 | `concurrency.conflict` | 409 | Otro usuario modificó el registro a la vez (bloqueo optimista con `@Version`). |
-| `concurrency.precondition_failed` | 412 | El `If-Match` no coincide con la versión actual: el recurso cambió desde que se leyó. |
+| `concurrency.precondition_failed` | 412 | El `If-Match` falta o no coincide con la versión actual: el recurso cambió desde que se leyó. Se compara dentro de la transacción que modifica (`StaleVersionException`). |
+| `request.too_large` | 413 | El fichero subido pasa de 1 MB, el límite de cualquier subida. |
 | `idempotency.key_reused` | 422 | La `Idempotency-Key` ya se usó con otra petición (otra ruta u otro cuerpo). |
 | `idempotency.in_progress` | 409 | La petición original con esa `Idempotency-Key` aún se está procesando. |
 | `internal` | 500 | Error inesperado. Se registra en el log con su `traceId`. |
@@ -57,8 +58,25 @@ Cada elemento de `errors[]` tiene `field` (ruta del campo: `taxId`, `lines[2].qu
 | `min` / `max` | Valor numérico fuera de rango. |
 | `invalid` | Otro error de formato. |
 | `tax_id.invalid` | El NIF, NIE o CIF no es válido (formato o dígito de control). |
+| `too_long` | Texto más largo de lo permitido. |
+| `email.invalid` | El correo no es válido. |
+| `phone.invalid` | El teléfono no es válido (cifras, espacios, paréntesis, guiones y `+` inicial; de 6 a 30). |
+| `website.invalid` | La web no es válida. |
+| `country.invalid` | El país no es un código ISO 3166-1 alfa-2. |
+| `postal_code.invalid` | El código postal español no tiene 5 cifras o no empieza por 01 a 52. |
+| `month.invalid` | El mes no va de 1 a 12. |
+| `time_zone.invalid` | No es una zona horaria IANA de región (`Europe/Madrid`). |
+| `language.unsupported` | El idioma no está disponible (`es`, `en`). |
+| `logo.unsupported_type` | El logo no es PNG, JPEG ni WebP. Se mira el contenido, no la extensión. |
+| `logo.too_large` | El logo pasa de 512 KB. |
 
 ## Códigos por módulo
+
+### shared
+
+| Código | Estado | Cuándo |
+| --- | --- | --- |
+| `settings.not_found` | 404 | El tenant se dio de alta antes del paso 1.9 y no tiene ajustes: repetir `provision-tenant` los crea. |
 
 ### parties
 
@@ -70,6 +88,6 @@ Cada elemento de `errors[]` tiene `field` (ruta del campo: `taxId`, `lines[2].qu
 ## Añadir un código
 
 1. Lanza una excepción de `com.norte.shared.domain.error` (`NotFoundException`, `ConflictException`,
-   `ValidationException`, `ForbiddenException`) con un código `modulo.recurso.motivo` en minúsculas.
+   `ValidationException`, `ForbiddenException`, `StaleVersionException`) con un código `modulo.recurso.motivo` en minúsculas.
 2. Añádelo a este catálogo en el mismo pull request.
 3. Si el frontend debe mostrar un texto propio, añade la traducción con el código como clave.

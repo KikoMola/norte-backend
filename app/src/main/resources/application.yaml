@@ -35,6 +35,11 @@ spring:
       mail.smtp.connectiontimeout: 10000
       mail.smtp.timeout: 10000
       mail.smtp.writetimeout: 10000
+  servlet:
+    multipart:
+      # El logo admite 512 KB (paso 1.9); el margen deja que el servicio responda con su 422 en lugar de cortar.
+      max-file-size: 1MB
+      max-request-size: 1MB
   messages:
     # Textos de las plantillas de correo, por idioma (paso 1.8).
     basename: i18n/mail

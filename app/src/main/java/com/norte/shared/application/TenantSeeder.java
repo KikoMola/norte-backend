@@ -11,6 +11,7 @@ import java.util.UUID;
  */
 public interface TenantSeeder {
 
-	void seed(UUID tenantId);
+	/** @param tenantName nombre del tenant en el alta; sirve de valor inicial (la razón social de los ajustes) */
+	void seed(UUID tenantId, String tenantName);
 
 }
