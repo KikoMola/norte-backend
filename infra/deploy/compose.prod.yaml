@@ -97,6 +97,9 @@ services:
       DB_OWNER_USER: norte_owner
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?}
       OIDC_ISSUER_URI: https://${AUTH_DOMAIN}/realms/norte
+      # Solo para el comando provision-tenant (alta de tenants, paso 1.1).
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PROVISIONER_SECRET: ${KEYCLOAK_PROVISIONER_SECRET:?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
       DEPLOYMENT_ENVIRONMENT: production
       TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.2}

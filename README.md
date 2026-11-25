@@ -49,6 +49,8 @@ navegador ──cookie HttpOnly──▶ bff (8080) ──Bearer JWT──▶ ap
 | `just test` | Build y todos los tests (Testcontainers necesita Docker) |
 | `just api` | Valida `api/openapi.yaml` con Spectral y regenera el código del contrato |
 | `just reset-db` | Borra la base de datos local y la recrea vacía (pide confirmación) |
+| `just provision-dev` | Da de alta en la base de datos los tenants de `ana` y `bruno` (después de `just up` y de un `reset-db`) |
+| `just provision-tenant …` | Alta de un tenant nuevo: organización y administrador en Keycloak, y datos iniciales (ver [Alta de tenants](#alta-de-tenants)) |
 | `just deploy` | Despliega en el servidor por SSH (ver [Despliegue](#despliegue)) |
 
 Con el backend en marcha, arranca el frontend (`npm start` en norte-frontend) y entra en http://localhost:4200.
@@ -69,8 +71,34 @@ Usuarios de prueba del realm `norte` (contraseña = usuario):
 | `ana` | `11111111-1111-1111-1111-111111111111` |
 | `bruno` | `22222222-2222-2222-2222-222222222222` |
 
-> Todas las contraseñas y el secreto del cliente `norte-bff` de este repositorio son **solo para desarrollo**. En
-> producción llegan por variables de entorno.
+> Todas las contraseñas y los secretos de los clientes `norte-bff` y `norte-provisioner` de este repositorio son
+> **solo para desarrollo**. En producción llegan por variables de entorno.
+
+## Alta de tenants
+
+Cada empresa que usa Norte es un **tenant**. Darlo de alta es un comando, no un endpoint: lo lanza quien administra el
+servidor (paso 1.1 del planning).
+
+```sh
+just provision-tenant --name=Globex --admin-username=gloria --admin-email=gloria@globex.test     --admin-first-name=Gloria --admin-last-name=Gómez --modules=crm,invoicing
+```
+
+1. En Keycloak crea una **organización** con el atributo `tenant_id` y su primer usuario administrador (roles `admin`
+   y `user`), con una contraseña temporal que el comando imprime y que hay que cambiar en el primer acceso.
+2. En PostgreSQL crea el tenant, activa los **módulos contratados** (`--modules`; por defecto `crm,invoicing`), da los
+   permisos por defecto a cada rol y carga los datos iniciales de cada módulo.
+
+Es **idempotente**: repetirlo con los mismos datos no crea nada nuevo, solo completa lo que falte (módulos o
+permisos nuevos). Sin `--tenant-id` reutiliza el tenant de la organización con ese nombre, o genera uno.
+
+En producción se lanza con la misma imagen:
+`docker compose -f compose.prod.yaml --env-file .env run --rm app provision-tenant --name=… …`.
+
+**Módulos y permisos.** Lo común (empresas, catálogo, ajustes) siempre está; el resto se contrata por tenant y un
+endpoint de un módulo no contratado responde 403 `module.disabled`. Cada endpoint exige un permiso
+(`invoice:issue`, `company:edit`…); los roles del token se traducen a permisos con la tabla `shared.role_permission`
+de cada tenant. `GET /me` devuelve los permisos y módulos efectivos para que el frontend oculte lo que no se puede
+hacer.
 
 ## Integración continua
 
@@ -106,8 +134,10 @@ Primer despliegue:
 3. Desde tu máquina: `DEPLOY_HOST=deploy@tu-servidor just deploy`, o el workflow **Deploy** (manual) con los secrets
    `DEPLOY_HOST`, `DEPLOY_SSH_KEY` y `DEPLOY_KNOWN_HOSTS` en el entorno `production`.
 4. Crea el realm `norte` en Keycloak, por túnel SSH a la consola de administración, a partir de
-   `infra/keycloak/realm-norte.json` **sin** los usuarios de prueba y con un secreto nuevo para `norte-bff` (el
-   mismo que `BFF_CLIENT_SECRET`), y con las URL de redirección de tu dominio.
+   `infra/keycloak/realm-norte.json` **sin** los usuarios de prueba, con un secreto nuevo para `norte-bff` (el
+   mismo que `BFF_CLIENT_SECRET`) y otro para `norte-provisioner` (el mismo que `KEYCLOAK_PROVISIONER_SECRET`), y con
+   las URL de redirección de tu dominio.
+5. Da de alta el primer tenant con `provision-tenant` (ver [Alta de tenants](#alta-de-tenants)).
 
 ## Contribuir
 

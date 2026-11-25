@@ -37,6 +37,15 @@ reset-db:
     docker volume rm norte_postgres-data
     docker compose up -d postgres
 
+# Alta de tenant (idempotente): just provision-tenant --name=Globex --admin-username=gloria --admin-email=gloria@globex.test
+provision-tenant +args:
+    ./gradlew :app:bootRun --args="provision-tenant {{args}}"
+
+# Da de alta los tenants de los usuarios de prueba ana y bruno (idempotente)
+provision-dev:
+    ./gradlew :app:bootRun --args="provision-tenant --tenant-id=11111111-1111-1111-1111-111111111111 --name=Acme --admin-username=ana --admin-email=ana@acme.test"
+    ./gradlew :app:bootRun --args="provision-tenant --tenant-id=22222222-2222-2222-2222-222222222222 --name=Globex --admin-username=bruno --admin-email=bruno@globex.test"
+
 # Arranca la API (norte-app) en http://localhost:8081
 run-app:
     ./gradlew :app:bootRun

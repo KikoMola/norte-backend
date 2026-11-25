@@ -4,8 +4,6 @@ import com.norte.support.IntegrationTest.TestDatabase;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -40,8 +38,7 @@ public class TestcontainersConfiguration {
 
 	@Bean
 	TestDatabase testDatabase(PostgreSQLContainer postgres) {
-		var owner = new DriverManagerDataSource(postgres.getJdbcUrl(), "norte_owner", "norte_owner");
-		return new TestDatabase(new JdbcTemplate(owner));
+		return new TestDatabase(postgres.getJdbcUrl());
 	}
 
 }

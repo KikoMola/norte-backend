@@ -28,7 +28,8 @@ Implementación: `com.norte.shared.api.problem.ProblemAdvice` (excepciones de la
 | --- | --- | --- |
 | `auth.unauthenticated` | 401 | No hay token, o el token no es válido: firma, emisor, caducidad o audiencia distinta de `norte-api`. |
 | `auth.tenant_missing` | 401 | El token es válido pero no lleva un claim `tenant_id` con un UUID. |
-| `auth.forbidden` | 403 | El usuario no tiene permiso para la acción. |
+| `auth.forbidden` | 403 | El usuario no tiene el permiso que exige el endpoint (`@RequiresPermission`). |
+| `module.disabled` | 403 | El endpoint es de un módulo (`crm`, `invoicing`…) que el tenant no tiene contratado. |
 | `validation` | 422 | Reglas de validación incumplidas. El detalle va en `errors[]`. |
 | `request.malformed` | 400 | El cuerpo no es un JSON válido o no encaja con el esquema. |
 | `request.invalid_parameter` | 400 | Un parámetro de consulta, cabecera o cursor no es válido (`limit` fuera de rango, `sort` no admitido, cursor manipulado o de otra ordenación). |

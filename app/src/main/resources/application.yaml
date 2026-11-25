@@ -27,6 +27,14 @@ spring:
 server:
   port: ${PORT:8081}
 
+norte:
+  keycloak:
+    # API de administración de Keycloak; solo la usa el comando provision-tenant (paso 1.1).
+    url: ${KEYCLOAK_URL:http://localhost:8180}
+    realm: norte
+    client-id: norte-provisioner
+    client-secret: ${KEYCLOAK_PROVISIONER_SECRET:norte-provisioner-dev-secret}
+
 logging:
   structured:
     # Logs JSON (ECS) con traceId, spanId y tenantId del MDC (paso 0.18). LOG_FORMAT admite ecs, logstash o gelf.

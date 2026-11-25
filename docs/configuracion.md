@@ -15,6 +15,9 @@
 | `DB_OWNER_PASSWORD` | `norte_owner` | Contraseña de `DB_OWNER_USER`. |
 | `OIDC_ISSUER_URI` | `http://localhost:8180/realms/norte` | Emisor de los JWT (realm de Keycloak). Debe coincidir exactamente con el `iss` de los tokens. |
 
+| `KEYCLOAK_URL` | `http://localhost:8180` | URL base de Keycloak para su API de administración. Solo la usa el comando `provision-tenant`. |
+| `KEYCLOAK_PROVISIONER_SECRET` | `norte-provisioner-dev-secret` | Secreto del cliente de servicio `norte-provisioner`. **Solo desarrollo**; en producción, obligatorio. |
+
 La audiencia exigida es `norte-api` (fija; la añade el mapper del cliente `norte-bff` en Keycloak).
 
 ## bff (Backend for Frontend, puerto 8080)

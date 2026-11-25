@@ -8,6 +8,7 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "bruteForceProtected": true,
+  "organizationsEnabled": true,
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
@@ -92,6 +93,23 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "norte-provisioner",
+      "name": "Norte: alta de tenants",
+      "description": "Cliente de servicio del comando provision-tenant (paso 1.1). Solo client credentials. Desde Keycloak 26.8.2 la API de administración exige el scope kc-admin-api en el token.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "norte-provisioner-dev-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "frontchannelLogout": false,
+      "attributes": {},
+      "defaultClientScopes": ["kc-admin-api", "service_account", "basic", "roles", "acr", "web-origins", "profile", "email"]
     }
   ],
   "users": [
@@ -142,6 +160,20 @@
         "admin",
         "user"
       ]
+    },
+    {
+      "username": "service-account-norte-provisioner",
+      "enabled": true,
+      "serviceAccountClientId": "norte-provisioner",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "manage-realm",
+          "view-realm"
+        ]
+      }
     }
   ],
   "components": {

@@ -13,6 +13,8 @@ import com.norte.parties.application.CompanyService;
 import com.norte.parties.application.CompanySort;
 import com.norte.parties.domain.Company;
 import com.norte.shared.api.problem.InvalidParameterException;
+import com.norte.shared.api.security.RequiresPermission;
+import com.norte.shared.domain.access.Permission;
 
 import org.springframework.data.domain.KeysetScrollPosition;
 import org.springframework.data.domain.Window;
@@ -31,6 +33,7 @@ class CompaniesController implements CompaniesApi {
 	}
 
 	@Override
+	@RequiresPermission(Permission.COMPANY_READ)
 	public ResponseEntity<CompanyPageDto> listCompanies(String cursor, Integer limit, String q, String sort) {
 		CompanySort order = CompanySort.fromParameter(sort == null ? "name" : sort)
 			.orElseThrow(() -> new InvalidParameterException("Ordenación no admitida: " + sort));
@@ -47,6 +50,7 @@ class CompaniesController implements CompaniesApi {
 	}
 
 	@Override
+	@RequiresPermission(Permission.COMPANY_EDIT)
 	public ResponseEntity<CompanyDto> createCompany(CompanyCreateDto body, UUID idempotencyKey) {
 		// Idempotency-Key se acepta ya en el contrato; su tratamiento llega en el paso 1.6.
 		Company company = companies.create(body.getName(), body.getTaxId());
@@ -56,6 +60,7 @@ class CompaniesController implements CompaniesApi {
 	}
 
 	@Override
+	@RequiresPermission(Permission.COMPANY_READ)
 	public ResponseEntity<CompanyDto> getCompany(UUID companyId) {
 		Company company = companies.get(companyId);
 		return ResponseEntity.ok().eTag(etag(company)).body(toDto(company));
