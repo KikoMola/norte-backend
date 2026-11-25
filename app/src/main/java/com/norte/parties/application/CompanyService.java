@@ -1,11 +1,15 @@
 package com.norte.parties.application;
 
 import java.time.Clock;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.OptionalLong;
 import java.util.UUID;
 
 import com.norte.parties.domain.Company;
 import com.norte.parties.domain.CompanyRepository;
 import com.norte.shared.application.TenantContext;
+import com.norte.shared.application.audit.History;
 import com.norte.shared.domain.TaxId;
 import com.norte.shared.domain.error.ConflictException;
 import com.norte.shared.domain.error.NotFoundException;
@@ -30,9 +34,12 @@ public class CompanyService {
 
 	private final Clock clock;
 
-	CompanyService(CompanyRepository companies, Clock clock) {
+	private final History history;
+
+	CompanyService(CompanyRepository companies, Clock clock, History history) {
 		this.companies = companies;
 		this.clock = clock;
+		this.history = history;
 	}
 
 	@Transactional
@@ -65,6 +72,21 @@ public class CompanyService {
 	public Company get(UUID id) {
 		return companies.findById(id)
 			.orElseThrow(() -> new NotFoundException("company.not_found", "No existe la empresa"));
+	}
+
+	/** Historial de la empresa (paso 1.4), de lo más reciente a lo más antiguo. 404 si no existe en este tenant. */
+	@Transactional(readOnly = true)
+	public History.Page history(UUID id, OptionalLong before, int limit) {
+		get(id);
+		return history.of(Company.class, id, before, limit, CompanyService::historyFields);
+	}
+
+	/** Campos de la empresa que se enseñan en su historial, con los nombres del contrato. */
+	static Map<String, String> historyFields(Company company) {
+		var fields = new LinkedHashMap<String, String>();
+		fields.put("name", company.name());
+		fields.put("taxId", company.taxId().value());
+		return fields;
 	}
 
 	@Transactional(readOnly = true)

@@ -15,6 +15,11 @@ spring:
     password: ${DB_OWNER_PASSWORD:norte_owner}
   jpa:
     open-in-view: false
+    properties:
+      # Historial con Envers (paso 1.4). Al borrar se guardan también los datos, así la fila de auditoría conserva su
+      # tenant_id (la política RLS lo exige) y el historial muestra qué se borró.
+      org.hibernate.envers.store_data_at_delete: true
+      org.hibernate.envers.audit_table_suffix: _aud
   jackson:
     default-property-inclusion: non_null
   security:

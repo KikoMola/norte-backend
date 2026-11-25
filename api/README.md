@@ -62,6 +62,14 @@ compara con la versión de `master` mediante oasdiff para detectar cambios incom
   reintentar con la misma clave), la misma clave con otra petición es un 422 `idempotency.key_reused` y las claves
   caducan a las 24 horas. Son por tenant.
 
+### Historial
+
+- Los recursos auditados exponen `GET /{recurso}/{id}/history` con una página de `AuditEvent`, del cambio más
+  reciente al más antiguo, paginada por cursor como cualquier lista. Exige el mismo permiso que leer el recurso.
+- `changes` usa los nombres de campo del esquema del recurso (`taxId`). Los campos técnicos (versión, fechas de
+  modificación) no aparecen.
+- Por debajo es Hibernate Envers: `shared.revision` y una tabla `<tabla>_aud` por entidad, con `tenant_id` y RLS.
+
 ### Seguridad
 
 - La API valida un JWT de Keycloak (`bearerAuth`, audiencia `norte-api`). El tenant sale siempre del token, **nunca**

@@ -11,12 +11,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.envers.Audited;
 
 /**
  * Empresa del maestro de terceros. De momento solo razón social y NIF (paso 0.22); el modelo completo llega en el
- * paso 1.10.
+ * paso 1.10. Sus cambios quedan en el historial (paso 1.4).
  */
 @Entity
+@Audited
 @Table(schema = "parties", name = "company")
 public class Company {
 
@@ -64,6 +66,13 @@ public class Company {
 		Objects.requireNonNull(now, "now");
 		// PostgreSQL guarda microsegundos: se trunca aquí para que la respuesta del alta y las lecturas coincidan.
 		return new Company(UUID.randomUUID(), tenantId, normalizeName(name), taxId, now.truncatedTo(ChronoUnit.MICROS));
+	}
+
+	/** Cambia la razón social; con las mismas reglas que al crearla. */
+	public void rename(String name, Instant now) {
+		Objects.requireNonNull(now, "now");
+		this.name = normalizeName(name);
+		this.updatedAt = now.truncatedTo(ChronoUnit.MICROS);
 	}
 
 	static String normalizeName(String name) {

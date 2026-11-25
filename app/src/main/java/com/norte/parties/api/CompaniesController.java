@@ -5,6 +5,7 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 import com.norte.contract.api.CompaniesApi;
+import com.norte.contract.model.AuditEventPageDto;
 import com.norte.contract.model.CompanyCreateDto;
 import com.norte.contract.model.CompanyDto;
 import com.norte.contract.model.CompanyPageDto;
@@ -12,6 +13,7 @@ import com.norte.contract.model.PageInfoDto;
 import com.norte.parties.application.CompanyService;
 import com.norte.parties.application.CompanySort;
 import com.norte.parties.domain.Company;
+import com.norte.shared.api.AuditEvents;
 import com.norte.shared.api.ETags;
 import com.norte.shared.api.problem.InvalidParameterException;
 import com.norte.shared.api.security.RequiresPermission;
@@ -65,6 +67,13 @@ class CompaniesController implements CompaniesApi {
 	public ResponseEntity<CompanyDto> getCompany(UUID companyId) {
 		Company company = companies.get(companyId);
 		return ResponseEntity.ok().eTag(etag(company)).body(toDto(company));
+	}
+
+	@Override
+	@RequiresPermission(Permission.COMPANY_READ)
+	public ResponseEntity<AuditEventPageDto> listCompanyHistory(UUID companyId, String cursor, Integer limit) {
+		var page = companies.history(companyId, AuditEvents.before(cursor), limit == null ? 25 : limit);
+		return ResponseEntity.ok(AuditEvents.toPage(page));
 	}
 
 	private static String etag(Company company) {
