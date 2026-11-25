@@ -20,6 +20,7 @@ extra["springModulithVersion"] = "2.2.0"
 
 val archunitVersion = "1.5.1"
 val testcontainersKeycloakVersion = "4.4.1"
+val jqwikVersion = "1.10.2"
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -50,6 +51,7 @@ dependencies {
 	testImplementation("org.testcontainers:testcontainers-postgresql")
 	testImplementation("com.tngtech.archunit:archunit-junit5:$archunitVersion")
 	testImplementation("com.github.dasniko:testcontainers-keycloak:$testcontainersKeycloakVersion")
+	testImplementation("net.jqwik:jqwik:$jqwikVersion")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -103,6 +105,7 @@ tasks.compileJava {
 }
 
 tasks.withType<Test> {
+	// JUnit Jupiter, ArchUnit y jqwik (tests de propiedades, paso 1.5) corren en la misma plataforma.
 	useJUnitPlatform()
 	finalizedBy(tasks.jacocoTestReport)
 }

@@ -39,3 +39,6 @@ out/
 ### Entorno ###
 .env
 *.local.yaml
+
+# Base de datos de fallos de jqwik (local)
+.jqwik-database
