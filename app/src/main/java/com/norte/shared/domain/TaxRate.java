@@ -33,7 +33,7 @@ public record TaxRate(Kind kind, Percentage rate) {
 	 * reste del total lo decide quien suma la factura.
 	 */
 	public Money amountOn(Money base) {
-		return base.percent(rate).rounded();
+		return base.percentRounded(rate);
 	}
 
 	public enum Kind {

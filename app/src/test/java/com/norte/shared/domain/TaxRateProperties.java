@@ -58,6 +58,13 @@ class TaxRateProperties {
 	}
 
 	@Example
+	void roundsOnceFromTheExactValue() {
+		// Encontrado por jqwik: 4,4649501 redondeado primero a 4 decimales (4,4650) y luego a céntimos daba 4,47.
+		assertThat(TaxRate.equivalenceSurcharge("0.26").amountOn(Money.euros("1717.2885")))
+			.isEqualTo(Money.euros("4.46"));
+	}
+
+	@Example
 	void percentageIsBetweenZeroAndHundred() {
 		assertThatThrownBy(() -> Percentage.of("-1")).isInstanceOf(IllegalArgumentException.class);
 		assertThatThrownBy(() -> Percentage.of("100.01")).isInstanceOf(IllegalArgumentException.class);

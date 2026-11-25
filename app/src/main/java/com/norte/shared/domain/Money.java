@@ -86,6 +86,20 @@ public record Money(BigDecimal amount, Currency currency) implements Comparable<
 		return times(percentage.fraction());
 	}
 
+	/**
+	 * Multiplica y redondea una sola vez, directamente a céntimos. Redondear primero a {@value #SCALE} decimales y
+	 * luego a céntimos puede dar un céntimo de más: 1717,2885 € × 0,26 % = 4,46495… → 4,4650 → 4,47 en vez de 4,46.
+	 */
+	public Money timesRounded(BigDecimal factor) {
+		Objects.requireNonNull(factor, "factor");
+		return new Money(amount.multiply(factor).setScale(currency.getDefaultFractionDigits(), ROUNDING), currency);
+	}
+
+	/** El porcentaje de este importe, redondeado una sola vez a céntimos (ver {@link #timesRounded}). */
+	public Money percentRounded(Percentage percentage) {
+		return timesRounded(percentage.fraction());
+	}
+
 	/** Redondeado a las unidades mínimas de la moneda (céntimos en euros) con {@link #ROUNDING}. */
 	public Money rounded() {
 		return new Money(amount.setScale(currency.getDefaultFractionDigits(), ROUNDING), currency);
