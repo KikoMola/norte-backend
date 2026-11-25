@@ -1,0 +1,5 @@
+# Falsos positivos revisados a mano. Cada línea es la huella que imprime Gitleaks: commit:fichero:regla:línea.
+#
+# PASSWORD_ALPHABET no es un secreto: es el alfabeto (sin 0/O ni 1/l/I) con el que se generan al azar las contraseñas
+# temporales del alta de tenant (paso 1.1).
+8bd92b92ab37e37d44874a0b20af951d22aacc4c:app/src/main/java/com/norte/shared/infrastructure/keycloak/KeycloakIdentityDirectory.java:generic-api-key:41
