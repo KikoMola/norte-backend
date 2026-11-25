@@ -4,26 +4,21 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 import com.norte.shared.application.TenantContext;
 import com.norte.shared.application.audit.History;
 import com.norte.shared.application.files.FilePath;
 import com.norte.shared.application.files.FileStorage;
-import com.norte.shared.domain.Email;
-import com.norte.shared.domain.TaxId;
+import com.norte.shared.application.validation.Violations;
 import com.norte.shared.domain.error.NotFoundException;
 import com.norte.shared.domain.error.StaleVersionException;
 import com.norte.shared.domain.error.ValidationException;
-import com.norte.shared.domain.error.ValidationException.Violation;
 import com.norte.shared.domain.settings.CompanySettings;
 import com.norte.shared.domain.settings.CompanySettings.Details;
 import com.norte.shared.domain.settings.CompanySettingsRepository;
@@ -42,15 +37,6 @@ public class CompanySettingsService {
 	public static final Set<String> LANGUAGES = Set.of("es", "en");
 
 	public static final int LOGO_MAX_BYTES = 512 * 1024;
-
-	private static final Pattern COUNTRY = Pattern.compile("[A-Z]{2}");
-
-	private static final Pattern SPANISH_POSTAL_CODE = Pattern.compile("(0[1-9]|[1-4]\\d|5[0-2])\\d{3}");
-
-	private static final Pattern PHONE = Pattern.compile("\\+?[0-9 ()-]{6,30}");
-
-	private static final Pattern WEBSITE = Pattern.compile("(https?://)?[\\p{L}0-9.-]+\\.[\\p{L}]{2,}(/\\S*)?",
-			Pattern.CASE_INSENSITIVE);
 
 	private final CompanySettingsRepository settings;
 
@@ -158,75 +144,33 @@ public class CompanySettingsService {
 
 	/** Todas las reglas a la vez, para que el usuario vea todos sus errores en un solo intento. */
 	static Details validate(Details details) {
-		var violations = new ArrayList<Violation>();
-		String legalName = strip(details.legalName());
-		if (legalName == null) {
-			violations.add(new Violation("legalName", "required", "La razón social es obligatoria."));
-		}
-		maxLength(violations, "legalName", legalName, 200);
-		maxLength(violations, "tradeName", details.tradeName(), 200);
-
-		String taxId = strip(details.taxId());
-		if (taxId != null) {
-			if (TaxId.isValid(taxId)) {
-				taxId = TaxId.of(taxId).value();
-			}
-			else {
-				violations.add(new Violation("taxId", "tax_id.invalid", "El NIF no es válido."));
-			}
-		}
-
-		String country = strip(details.country());
-		if (country == null || !COUNTRY.matcher(country).matches()) {
-			violations.add(new Violation("address.country", "country.invalid", "El país no es válido."));
-		}
-		maxLength(violations, "address.line1", details.addressLine1(), 200);
-		maxLength(violations, "address.line2", details.addressLine2(), 200);
-		maxLength(violations, "address.city", details.city(), 100);
-		maxLength(violations, "address.province", details.province(), 100);
-		String postalCode = strip(details.postalCode());
-		if (postalCode != null && "ES".equals(country) && !SPANISH_POSTAL_CODE.matcher(postalCode).matches()) {
-			violations.add(new Violation("address.postalCode", "postal_code.invalid",
-					"El código postal español tiene 5 cifras y empieza por 01 a 52."));
-		}
-		maxLength(violations, "address.postalCode", postalCode, 20);
-
-		String email = strip(details.email());
-		if (email != null) {
-			if (Email.isValid(email)) {
-				email = Email.of(email).value();
-			}
-			else {
-				violations.add(new Violation("email", "email.invalid", "El correo no es válido."));
-			}
-		}
-		String phone = strip(details.phone());
-		if (phone != null && !PHONE.matcher(phone).matches()) {
-			violations.add(new Violation("phone", "phone.invalid", "El teléfono no es válido."));
-		}
-		String website = strip(details.website());
-		if (website != null && (website.length() > 200 || !WEBSITE.matcher(website).matches())) {
-			violations.add(new Violation("website", "website.invalid", "La web no es válida."));
-		}
-
+		var check = new Violations();
+		String legalName = check.required("legalName", details.legalName(), 200);
+		String tradeName = check.optional("tradeName", details.tradeName(), 200);
+		String taxId = check.taxId("taxId", details.taxId(), false);
+		String country = check.country("address.country", details.country());
+		String line1 = check.optional("address.line1", details.addressLine1(), 200);
+		String line2 = check.optional("address.line2", details.addressLine2(), 200);
+		String postalCode = check.postalCode("address.postalCode", details.postalCode(), country);
+		String city = check.optional("address.city", details.city(), 100);
+		String province = check.optional("address.province", details.province(), 100);
+		String email = check.email("email", details.email());
+		String phone = check.phone("phone", details.phone());
+		String website = check.website("website", details.website());
 		if (details.fiscalYearStartMonth() < 1 || details.fiscalYearStartMonth() > 12) {
-			violations.add(new Violation("fiscalYearStartMonth", "month.invalid", "El mes tiene que ir de 1 a 12."));
+			check.add("fiscalYearStartMonth", "month.invalid", "El mes tiene que ir de 1 a 12.");
 		}
-		String timeZone = strip(details.timeZone());
+		String timeZone = details.timeZone() == null ? null : details.timeZone().strip();
 		if (!isZone(timeZone)) {
-			violations.add(new Violation("timeZone", "time_zone.invalid", "La zona horaria no es válida."));
+			check.add("timeZone", "time_zone.invalid", "La zona horaria no es válida.");
 		}
-		String language = strip(details.language());
+		String language = details.language() == null ? null : details.language().strip();
 		if (language == null || !LANGUAGES.contains(language)) {
-			violations.add(new Violation("language", "language.unsupported", "El idioma no está disponible."));
+			check.add("language", "language.unsupported", "El idioma no está disponible.");
 		}
-
-		if (!violations.isEmpty()) {
-			throw new ValidationException(violations);
-		}
-		return new Details(legalName, details.tradeName(), taxId, details.addressLine1(), details.addressLine2(),
-				postalCode, details.city(), details.province(), country, email, phone, website,
-				details.fiscalYearStartMonth(), timeZone, language);
+		check.throwIfAny();
+		return new Details(legalName, tradeName, taxId, line1, line2, postalCode, city, province, country, email, phone,
+				website, details.fiscalYearStartMonth(), timeZone, language);
 	}
 
 	private static boolean isZone(String zone) {
@@ -240,16 +184,6 @@ public class CompanySettingsService {
 		catch (DateTimeException ex) {
 			return false;
 		}
-	}
-
-	private static void maxLength(List<Violation> violations, String field, String value, int max) {
-		if (value != null && value.strip().length() > max) {
-			violations.add(new Violation(field, "too_long", "Como mucho " + max + " caracteres."));
-		}
-	}
-
-	private static String strip(String value) {
-		return value == null || value.isBlank() ? null : value.strip();
 	}
 
 	/** Formatos de logo admitidos, reconocidos por su firma de bytes. */

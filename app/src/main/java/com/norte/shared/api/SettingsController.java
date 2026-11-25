@@ -5,9 +5,9 @@ import java.io.UncheckedIOException;
 
 import com.norte.contract.api.SettingsApi;
 import com.norte.contract.model.AuditEventPageDto;
-import com.norte.contract.model.CompanySettingsAddressDto;
 import com.norte.contract.model.CompanySettingsDto;
 import com.norte.contract.model.CompanySettingsUpdateDto;
+import com.norte.contract.model.PostalAddressDto;
 import com.norte.shared.api.security.RequiresPermission;
 import com.norte.shared.application.settings.CompanySettingsService;
 import com.norte.shared.domain.access.Permission;
@@ -70,7 +70,7 @@ class SettingsController implements SettingsApi {
 
 	private CompanySettingsDto toDto(CompanySettings company) {
 		Details details = company.details();
-		var address = new CompanySettingsAddressDto(details.country());
+		var address = new PostalAddressDto(details.country());
 		address.setLine1(details.addressLine1());
 		address.setLine2(details.addressLine2());
 		address.setPostalCode(details.postalCode());
@@ -88,7 +88,7 @@ class SettingsController implements SettingsApi {
 	}
 
 	private static Details toDetails(CompanySettingsUpdateDto body) {
-		CompanySettingsAddressDto address = body.getAddress();
+		PostalAddressDto address = body.getAddress();
 		return new Details(body.getLegalName(), body.getTradeName(), body.getTaxId(), address.getLine1(),
 				address.getLine2(), address.getPostalCode(), address.getCity(), address.getProvince(),
 				address.getCountry(), body.getEmail(), body.getPhone(), body.getWebsite(),

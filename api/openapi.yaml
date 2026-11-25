@@ -134,6 +134,192 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /companies/duplicates:
+    get:
+      tags: [companies]
+      operationId: findCompanyDuplicates
+      summary: Empresas que podrían ser la misma
+      description: |
+        Para avisar antes de un alta o una edición (paso 1.10): mismo NIF o nombre parecido. Hasta 5, primero las de
+        mismo NIF. Exige `company:read`.
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: taxId
+          in: query
+          schema:
+            type: string
+            maxLength: 15
+        - name: excludeId
+          in: query
+          description: La empresa que se está editando, para que no salga como duplicada de sí misma.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Posibles duplicados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDuplicateList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /companies/{companyId}/contacts:
+    parameters:
+      - $ref: '#/components/parameters/CompanyId'
+    get:
+      tags: [companies]
+      operationId: listCompanyContacts
+      summary: Contactos de una empresa
+      description: Todos, ordenados por nombre (una empresa admite hasta 200). Exige `company:read`.
+      responses:
+        '200':
+          description: Contactos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    post:
+      tags: [companies]
+      operationId: createCompanyContact
+      summary: Añade un contacto a una empresa
+      description: Exige `company:edit`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactInput'
+      responses:
+        '201':
+          description: Contacto creado
+          headers:
+            Location:
+              description: URL del contacto creado
+              schema:
+                type: string
+                format: uri-reference
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /companies/{companyId}/contacts/{contactId}:
+    parameters:
+      - $ref: '#/components/parameters/CompanyId'
+      - $ref: '#/components/parameters/ContactId'
+    get:
+      tags: [companies]
+      operationId: getCompanyContact
+      summary: Detalle de un contacto
+      description: Exige `company:read`.
+      responses:
+        '200':
+          description: Contacto
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    put:
+      tags: [companies]
+      operationId: updateCompanyContact
+      summary: Cambia un contacto
+      description: Exige `company:edit` e `If-Match`.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactInput'
+      responses:
+        '200':
+          description: Contacto
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    delete:
+      tags: [companies]
+      operationId: deleteCompanyContact
+      summary: Borra un contacto
+      description: Exige `company:edit`.
+      responses:
+        '204':
+          description: Contacto borrado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
   /companies/{companyId}:
     parameters:
       - $ref: '#/components/parameters/CompanyId'
@@ -160,6 +346,46 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+    put:
+      tags: [companies]
+      operationId: updateCompany
+      summary: Cambia los datos de una empresa
+      description: Exige `company:edit` e `If-Match`. Sustituye todos los datos editables.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyUpdate'
+      responses:
+        '200':
+          description: Empresa
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
         default:
           $ref: '#/components/responses/UnexpectedError'
 
@@ -427,6 +653,14 @@ components:
         type: string
         format: uuid
 
+    ContactId:
+      name: contactId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
   responses:
     BadRequest:
       description: Petición mal formada (parámetros o JSON inválidos)
@@ -641,9 +875,11 @@ components:
         pageInfo:
           $ref: '#/components/schemas/PageInfo'
 
-    CompanySettingsAddress:
+    PostalAddress:
       type: object
-      description: Dirección fiscal. Solo el país es obligatorio; el resto hace falta para emitir facturas.
+      description: |
+        Dirección postal en la que solo el país es obligatorio (empresas y ajustes). El resto hace falta para emitir
+        facturas.
       required: [country]
       properties:
         line1:
@@ -684,7 +920,7 @@ components:
           description: NIF del emisor. Hace falta para emitir facturas.
           maxLength: 15
         address:
-          $ref: '#/components/schemas/CompanySettingsAddress'
+          $ref: '#/components/schemas/PostalAddress'
         email:
           type: [string, 'null']
           description: Correo de facturación; las respuestas de los clientes a los correos de Norte van aquí.
@@ -780,10 +1016,79 @@ components:
           description: NIF, NIE o CIF español. Se normaliza a mayúsculas sin espacios ni guiones.
           minLength: 9
           maxLength: 15
+        tradeName:
+          type: [string, 'null']
+          maxLength: 200
+        email:
+          type: [string, 'null']
+          description: Correo de facturación de la empresa.
+          maxLength: 254
+        phone:
+          type: [string, 'null']
+          maxLength: 30
+        website:
+          type: [string, 'null']
+          maxLength: 200
+        address:
+          $ref: '#/components/schemas/PostalAddress'
+        creditLimit:
+          description: Límite de crédito en euros. Sin él, no tiene límite.
+          oneOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+        isCustomer:
+          type: boolean
+          description: Se le factura. Una empresa es cliente, proveedor o las dos cosas.
+          default: true
+        isSupplier:
+          type: boolean
+          description: Nos factura (hito 4).
+          default: false
+
+    CompanyUpdate:
+      type: object
+      additionalProperties: false
+      description: Todos los datos editables de una empresa (paso 1.10); los opcionales vacíos se guardan como `null`.
+      required: [name, taxId, address, isCustomer, isSupplier]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        taxId:
+          type: string
+          minLength: 9
+          maxLength: 15
+        tradeName:
+          type: [string, 'null']
+          maxLength: 200
+        email:
+          type: [string, 'null']
+          description: Correo de facturación de la empresa.
+          maxLength: 254
+        phone:
+          type: [string, 'null']
+          maxLength: 30
+        website:
+          type: [string, 'null']
+          maxLength: 200
+        address:
+          $ref: '#/components/schemas/PostalAddress'
+        creditLimit:
+          description: Límite de crédito en euros. Sin él, no tiene límite.
+          oneOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+        isCustomer:
+          type: boolean
+          description: Se le factura. Una empresa es cliente, proveedor o las dos cosas.
+        isSupplier:
+          type: boolean
+          description: Nos factura (hito 4).
 
     Company:
       type: object
-      required: [id, name, taxId, createdAt, updatedAt]
+      required: [id, name, taxId, address, isCustomer, isSupplier, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -793,12 +1098,117 @@ components:
         taxId:
           type: string
           description: NIF normalizado.
+        tradeName:
+          type: [string, 'null']
+          maxLength: 200
+        email:
+          type: [string, 'null']
+          description: Correo de facturación de la empresa.
+          maxLength: 254
+        phone:
+          type: [string, 'null']
+          maxLength: 30
+        website:
+          type: [string, 'null']
+          maxLength: 200
+        address:
+          $ref: '#/components/schemas/PostalAddress'
+        creditLimit:
+          description: Límite de crédito en euros. Sin él, no tiene límite.
+          oneOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+        isCustomer:
+          type: boolean
+          description: Se le factura. Una empresa es cliente, proveedor o las dos cosas.
+        isSupplier:
+          type: boolean
+          description: Nos factura (hito 4).
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
+
+    CompanyDuplicateList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [company, reason]
+            properties:
+              company:
+                $ref: '#/components/schemas/Company'
+              reason:
+                type: string
+                description: '`tax_id`: mismo NIF (no se podrá guardar); `similar_name`: nombre parecido.'
+                enum: [tax_id, similar_name]
+
+    ContactInput:
+      type: object
+      additionalProperties: false
+      required: [firstName]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: [string, 'null']
+          maxLength: 100
+        jobTitle:
+          type: [string, 'null']
+          description: Cargo.
+          maxLength: 100
+        email:
+          type: [string, 'null']
+          maxLength: 254
+        phone:
+          type: [string, 'null']
+          maxLength: 30
+        role:
+          description: Para qué se le contacta. Las facturas se envían al de `billing`.
+          oneOf:
+            - $ref: '#/components/schemas/ContactRole'
+            - type: 'null'
+
+    ContactRole:
+      type: string
+      enum: [billing, decision_maker, purchasing, technical, other]
+
+    Contact:
+      allOf:
+        - $ref: '#/components/schemas/ContactInput'
+        - type: object
+          required: [id, companyId, createdAt, updatedAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            companyId:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    ContactList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/Contact'
 
     CompanyPage:
       type: object
@@ -828,6 +1238,19 @@ components:
         id: 0b6f1c3e-9a43-4d0e-8f1e-7f6a2b1c9d10
         name: Acme Ibérica S.L.
         taxId: B12345674
+        tradeName: Acme
+        email: facturas@acme.test
+        address:
+          line1: Calle Mayor 1
+          postalCode: '46001'
+          city: Valencia
+          province: Valencia
+          country: ES
+        creditLimit:
+          amount: '10000.00'
+          currency: EUR
+        isCustomer: true
+        isSupplier: false
         createdAt: '2026-11-24T09:30:00Z'
         updatedAt: '2026-11-24T09:30:00Z'
     CompanyPageFirst:
@@ -836,11 +1259,21 @@ components:
           - id: 0b6f1c3e-9a43-4d0e-8f1e-7f6a2b1c9d10
             name: Acme Ibérica S.L.
             taxId: B12345674
+            address:
+              city: Valencia
+              country: ES
+            isCustomer: true
+            isSupplier: false
             createdAt: '2026-11-24T09:30:00Z'
             updatedAt: '2026-11-24T09:30:00Z'
           - id: 5d2e7a90-3c1b-4f6e-a8d2-1e9b0c4f7a32
             name: Globex Levante S.A.
             taxId: A58818501
+            address:
+              city: Alicante
+              country: ES
+            isCustomer: true
+            isSupplier: true
             createdAt: '2026-11-23T16:05:00Z'
             updatedAt: '2026-11-23T16:05:00Z'
         pageInfo:

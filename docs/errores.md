@@ -69,6 +69,11 @@ Cada elemento de `errors[]` tiene `field` (ruta del campo: `taxId`, `lines[2].qu
 | `language.unsupported` | El idioma no está disponible (`es`, `en`). |
 | `logo.unsupported_type` | El logo no es PNG, JPEG ni WebP. Se mira el contenido, no la extensión. |
 | `logo.too_large` | El logo pasa de 512 KB. |
+| `amount.invalid` | El importe tiene más de 4 decimales o más de 15 cifras enteras. |
+| `currency.unsupported` | La moneda no se admite en ese campo (el límite de crédito va en euros). |
+| `company.kind.required` | La empresa no es ni cliente ni proveedor; tiene que ser al menos una cosa. |
+| `contact.role.invalid` | La función del contacto no es una de las del contrato. |
+| `contact.limit` | La empresa ya tiene 200 contactos. |
 
 ## Códigos por módulo
 
@@ -83,7 +88,8 @@ Cada elemento de `errors[]` tiene `field` (ruta del campo: `taxId`, `lines[2].qu
 | Código | Estado | Cuándo |
 | --- | --- | --- |
 | `company.not_found` | 404 | La empresa no existe **o es de otro tenant** (nunca 403, para no revelar que existe). |
-| `company.tax_id.duplicate` | 409 | Ya hay una empresa con ese NIF en el tenant. |
+| `company.tax_id.duplicate` | 409 | Ya hay una empresa con ese NIF en el tenant (al dar de alta o al editar). |
+| `contact.not_found` | 404 | El contacto no existe, es de otra empresa o de otro tenant. |
 
 ## Añadir un código
 
